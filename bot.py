@@ -15,6 +15,7 @@ from page_checker import (
     get_page_content,
     get_page_hash,
     untrack_page,
+    get_listings,
 )
 
 load_dotenv()
@@ -127,6 +128,34 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/reset — clear all pages"
     )
 
+async def listings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.effective_message.reply_text("Use: /listings <url>")
+        return
+    
+    url = context.args[0]
+    items = get_listings(url)
+
+    if items is None:
+        await update.effective_message.reply_text("Could not get listings.")
+        return
+    
+    if not items:
+        await update.effective_message.reply_text("No listings found.")
+        return
+    
+    message = "Listings:\n\n"
+
+    for item in items[:5]:
+        message += (
+             f"{item['title']}\n"
+             f"{item['price']}\n"
+             f"{item['link']}\n\n"
+        )
+
+    await update.effective_message.reply_text(message)
+
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
@@ -140,6 +169,7 @@ app.add_handler(CommandHandler("track", track))
 app.add_handler(CommandHandler("untrack", untrack))
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("listings", listings))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 

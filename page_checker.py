@@ -2,6 +2,9 @@ import requests
 import hashlib
 import json
 
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+
 STATE_FILE = "state.json"
 
 def read_state():
@@ -22,6 +25,7 @@ def get_page_content(url):
         if response.status_code != 200:
             return None
         
+        response.encoding = "utf-8"
         return response.text
     
     except requests.RequestException:
@@ -115,3 +119,29 @@ def untrack_page(chat_id, url):
     write_state(state)
 
     return "Page tracking disabled."
+
+def get_listings(url):
+    content = get_page_content(url)
+
+    if content is None:
+        return None
+    
+    soup = BeautifulSoup(content, "html.parser")
+
+    listings = []
+
+    cards = soup.find_all("article", class_="product_pod")
+
+    for card in cards:
+        title = card.find("h3").find("a")["title"]
+        price = card.find("p", class_="price_color").text
+        relative_link = card.find("h3").find("a")["href"]
+        link = urljoin(url, relative_link)
+
+        listings.append({
+            "title": title,
+            "price": price,
+            "link": link
+        })
+
+    return listings
