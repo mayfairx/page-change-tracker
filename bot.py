@@ -16,6 +16,7 @@ from page_checker import (
     get_page_hash,
     untrack_page,
     get_listings,
+    check_new_listings,
 )
 
 load_dotenv()
@@ -155,6 +156,17 @@ async def listings(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(message)
 
+async def new_listings(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.effective_message.reply_text("Use: /new_listings <url>")
+        return
+    
+    chat_id = str(update.effective_chat.id)
+    url = context.args[0]
+
+    result = check_new_listings(chat_id, url)
+
+    await update.effective_message.reply_text(result)
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
@@ -170,6 +182,7 @@ app.add_handler(CommandHandler("untrack", untrack))
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CommandHandler("listings", listings))
+app.add_handler(CommandHandler("new_listings", new_listings))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 
