@@ -14,6 +14,7 @@ from page_checker import (
     write_state,
     get_page_content,
     get_page_hash,
+    untrack_page,
 )
 
 load_dotenv()
@@ -58,6 +59,18 @@ async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.effective_message.reply_text(result)
 
+async def untrack(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.effective_message.reply_text("Use: /untrack <url>")
+        return
+    
+    chat_id = str(update.effective_chat.id)
+    url = context.args[0]
+
+    result = untrack_page(chat_id, url)
+
+    await update.effective_message.reply_text(result)
+
 async def check_tracked_pages(context: ContextTypes.DEFAULT_TYPE):
     state = read_state()
     current_time = time.time()
@@ -100,6 +113,7 @@ app.add_handler(CommandHandler("check", check))
 app.add_handler(CommandHandler("show", show))
 app.add_handler(CommandHandler("reset", reset))
 app.add_handler(CommandHandler("track", track))
+app.add_handler(CommandHandler("untrack", untrack))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 

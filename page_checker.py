@@ -36,7 +36,7 @@ def check_page_change(url):
   if content is None:
       return "Could not get page."
   
-  current_hash = get_page_content(content)
+  current_hash = get_page_hash(content)
 
   state = read_state()
   page_data = state.get(url)
@@ -57,7 +57,7 @@ def check_page_change(url):
       write_state(state)
       return "Page changed."
   
-  return "No changes."
+  return "No changes."  
 
 
 def show_tracked_pages(chat_id):
@@ -84,7 +84,7 @@ def track_page(chat_id, url, interval):
     if content is None:
         return "Could not get page."
     
-    current_hash = get_page_content(content)
+    current_hash = get_page_hash(content)
 
     state = read_state()
 
@@ -100,3 +100,18 @@ def track_page(chat_id, url, interval):
     write_state(state)
 
     return "Page tracking enabled."
+
+def untrack_page(chat_id, url):
+    state = read_state()
+
+    if chat_id not in state or url not in state[chat_id]:
+        return "Page is not being tracked."
+    
+    del state[chat_id][url]
+
+    if not state[chat_id]:
+        del state[chat_id]
+
+    write_state(state)
+
+    return "Page tracking disabled."
