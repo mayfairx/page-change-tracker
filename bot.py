@@ -103,6 +103,30 @@ async def check_tracked_pages(context: ContextTypes.DEFAULT_TYPE):
 
         write_state(state)
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.effective_message.reply_text(
+          "Welcome 👋\n\n"
+        "This bot tracks webpage changes and notifies you when a page is updated.\n\n"
+        "Commands:\n"
+        "/track <url> <minutes> — start tracking a page\n"
+        "/untrack <url> — stop tracking a page\n"
+        "/show — show tracked pages\n"
+        "/check <url> — check a page manually\n"
+        "/reset — clear all tracked pages\n\n"
+        "Example:\n"
+        "/track https://example.com 5"
+    )
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.effective_message.reply_text(
+        "Commands:\n\n"
+        "/track <url> <minutes> — start tracking\n"
+        "/untrack <url> — stop tracking\n"
+        "/show — show tracked pages\n"
+        "/check <url> — manual check\n"
+        "/reset — clear all pages"
+    )
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
@@ -114,6 +138,8 @@ app.add_handler(CommandHandler("show", show))
 app.add_handler(CommandHandler("reset", reset))
 app.add_handler(CommandHandler("track", track))
 app.add_handler(CommandHandler("untrack", untrack))
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", help_command))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 
