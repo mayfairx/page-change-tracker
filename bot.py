@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from dotenv import load_dotenv
-from page_checker import check_page_change, show_tracked_pages, reset_tracked_pages
+from page_checker import check_page_change, show_tracked_pages, reset_tracked_pages, track_page
 
 import os
 
@@ -18,11 +18,33 @@ async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(result)
 
 async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    result = show_tracked_pages()
+    chat_id = str(update.effective_chat.id)
+    result = show_tracked_pages(chat_id)
     await update.effective_message.reply_text(result)
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = reset_tracked_pages()
+    await update.effective_message.reply_text(result)
+
+async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 2:
+        await update.effective_message.reply_text("Use: /track <url> <minutes>")
+        return
+    
+    url = context.args[0]
+    interval = context.args[1]
+
+    if not interval.isdigit():
+        await update.effective_message.reply_text(
+            "Interval must be a number. Example: /track https://example.com 5"
+        )
+        return
+    
+    interval = int(interval)
+    
+    chat_id = str(update.effective_chat.id)
+    result = track_page(chat_id, url, interval)
+    
     await update.effective_message.reply_text(result)
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -34,5 +56,6 @@ app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("check", check))
 app.add_handler(CommandHandler("show", show))
 app.add_handler(CommandHandler("reset", reset))
+app.add_handler(CommandHandler("track", track))
 
 app.run_polling(drop_pending_updates=True)
