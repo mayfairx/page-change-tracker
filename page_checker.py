@@ -232,12 +232,17 @@ def check_keywords(url, keywords):
             found_keywords.append(keyword)
 
     if not found_keywords:
-        return "No keywords found."
+        return (
+            "No keywords found.\n\n"
+            f"URL:\n{url}"
+        )
     
     message = "Found keywords:\n\n"
 
     for keyword in found_keywords:
         message += f"{keyword}\n"
+
+    message += f"\nURL:\n{url}"
 
     return message
 
@@ -270,3 +275,17 @@ def show_keywords(chat_id):
         message += f"{keyword}\n"
 
     return message
+
+def check_saved_keywords(chat_id, url):
+    state = read_state()
+
+    if chat_id not in state or "keywords" not in state[chat_id]:
+        return "No keywords saved."
+    
+    keywords = state[chat_id]["keywords"]
+
+    if not keywords:
+        return "No keywords saved."
+    
+    return check_keywords(url, keywords)
+

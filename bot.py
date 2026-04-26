@@ -21,6 +21,7 @@ from page_checker import (
     check_keywords,
     set_keywords,
     show_keywords,
+    check_saved_keywords,
 )
 
 load_dotenv()
@@ -231,6 +232,20 @@ async def show_keywords_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     await update.effective_message.reply_text(result)
 
+async def check_saved_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.effective_message.reply_text("Use: /check_saved_keywords <url>")
+        return
+    
+    chat_id = str(update.effective_chat.id)
+    url = context.args[0]
+
+    result = check_saved_keywords(chat_id, url)
+
+    await update.effective_message.reply_text(result)
+
+
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
@@ -250,6 +265,7 @@ app.add_handler(CommandHandler("check_keyword", check_keyword_command))
 app.add_handler(CommandHandler("check_keywords", check_keywords_command))
 app.add_handler(CommandHandler("set_keywords", set_keywords_command))
 app.add_handler(CommandHandler("show_keywords", show_keywords_command))
+app.add_handler(CommandHandler("check_saved_keywords", check_saved_keywords_command))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 

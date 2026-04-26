@@ -17,6 +17,7 @@ A Telegram bot built with Python for monitoring webpages, detecting changes, par
 - `/check_keywords <url> <keyword1> <keyword2>` — check if a page contains multiple keywords
 - `/set_keywords <keyword1> <keyword2>` — save a custom keyword list
 - `/show_keywords` — show saved keywords
+- `/check_saved_keywords <url>` — check a page using saved keywords
 
 - `/start` — show the quick start guide
 - `/help` — show available commands
@@ -29,7 +30,7 @@ First, it can detect full webpage changes. It downloads the page HTML, creates a
 
 Second, it can parse structured listing cards from supported pages. It extracts listing titles, prices, and links, then saves already-seen links. If a new link appears later, the bot can detect it as a new listing.
 
-Third, it can check webpages for custom keywords. This allows users to monitor specific terms or updates without manually reviewing the page.
+Third, it can check webpages for custom keywords. Users can check keywords directly in a command or save a keyword list and reuse it across different pages.
 
 ## Project Structure
 
@@ -74,6 +75,24 @@ Manually check a webpage:
 /check https://example.com
 ```
 
+Show tracked webpages:
+
+```text
+/show
+```
+
+Show listings from a supported page:
+
+```text
+/listings https://books.toscrape.com/
+```
+
+Check for new listings:
+
+```text
+/new_listings https://books.toscrape.com/
+```
+
 Check one keyword:
 
 ```text
@@ -98,16 +117,10 @@ Show saved keywords:
 /show_keywords
 ```
 
-Show listings from a supported page:
+Check a page using saved keywords:
 
 ```text
-/listings https://books.toscrape.com/
-```
-
-Check for new listings:
-
-```text
-/new_listings https://books.toscrape.com/
+/check_saved_keywords https://example.com
 ```
 
 ## Notes
@@ -121,4 +134,4 @@ Check for new listings:
 - Stores data in `state.json`
 - Supports scheduled checks with `python-telegram-bot[job-queue]`
 - Listing parsing is currently site-specific and may need to be adapted for each website
-- The bot detects changes and new items, but does not yet show detailed visual differences between page versions
+- The bot detects page changes and new items, but does not yet show detailed visual differences between page versions
