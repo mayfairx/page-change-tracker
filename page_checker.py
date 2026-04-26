@@ -200,3 +200,73 @@ def check_new_listings(chat_id, url):
         )
 
     return message
+
+def check_keyword(url, keyword):
+    content = get_page_content(url)
+
+    if content is None:
+        return "Could not get page."
+    
+    content = content.lower()
+    keyword = keyword.lower()
+
+    if keyword in content:
+        return "Keyword found."
+    
+    return "Keyword not found."
+
+def check_keywords(url, keywords):
+    content = get_page_content(url)
+
+    if content is None:
+        return "Could not get page."
+    
+    content = content.lower()
+
+    found_keywords = []
+
+    for keyword in keywords:
+        keyword = keyword.lower()
+
+        if keyword in content:
+            found_keywords.append(keyword)
+
+    if not found_keywords:
+        return "No keywords found."
+    
+    message = "Found keywords:\n\n"
+
+    for keyword in found_keywords:
+        message += f"{keyword}\n"
+
+    return message
+
+def set_keywords(chat_id, keywords):
+    state = read_state()
+
+    if chat_id not in state:
+        state[chat_id] = {}
+
+    state[chat_id]["keywords"] = keywords
+
+    write_state(state)
+
+    return "Keywords saved."
+
+def show_keywords(chat_id):
+    state = read_state()
+
+    if chat_id not in state or "keywords" not in state[chat_id]:
+        return "No keywords saved."
+    
+    keywords = state[chat_id]["keywords"]
+
+    if not keywords:
+        return "No keywords saved."
+    
+    message = "Saved keywords:\n\n"
+
+    for keyword in keywords:
+        message += f"{keyword}\n"
+
+    return message
