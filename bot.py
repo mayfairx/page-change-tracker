@@ -22,6 +22,7 @@ from page_checker import (
     set_keywords,
     show_keywords,
     check_saved_keywords,
+    check_hn_topics,
 )
 
 load_dotenv()
@@ -244,7 +245,17 @@ async def check_saved_keywords_command(update: Update, context: ContextTypes.DEF
 
     await update.effective_message.reply_text(result)
 
+async def check_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 2:
+        await update.effective_message.reply_text("Use: /check_hn <url> <keyword1> <keyword2>")
+        return
 
+    url = context.args[0]
+    keywords = context.args[1:]
+
+    result = check_hn_topics(url, keywords)
+
+    await update.effective_message.reply_text(result)
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
@@ -266,6 +277,7 @@ app.add_handler(CommandHandler("check_keywords", check_keywords_command))
 app.add_handler(CommandHandler("set_keywords", set_keywords_command))
 app.add_handler(CommandHandler("show_keywords", show_keywords_command))
 app.add_handler(CommandHandler("check_saved_keywords", check_saved_keywords_command))
+app.add_handler(CommandHandler("check_hn", check_hn))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 

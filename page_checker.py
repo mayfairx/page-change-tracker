@@ -289,3 +289,72 @@ def check_saved_keywords(chat_id, url):
     
     return check_keywords(url, keywords)
 
+def get_hn_topics(url):
+    content = get_page_content(url)
+
+    if content is None:
+        return None
+
+    soup = BeautifulSoup(content, "html.parser")
+
+    topics = []
+    title_lines = soup.find_all("span", class_="titleline")
+
+    for title_line in title_lines:
+        link_tag = title_line.find("a")
+
+        if link_tag is None:
+            continue
+
+        title = link_tag.text
+        link = link_tag["href"]
+        full_link = urljoin(url, link)
+
+        topics.append({
+            "title": title,
+            "link": full_link
+        })
+
+    return topics
+
+
+def check_hn_topics(url, keywords):
+    topics = get_hn_topics(url)
+
+    if topics is None:
+        return "Could not get HN topics."
+
+    matches = []
+
+    for topic in topics:
+        title_lower = topic["title"].lower()
+        matched_keywords = []
+
+        for keyword in keywords:
+            keyword_lower = keyword.lower()
+
+            if keyword_lower in title_lower:
+                matched_keywords.append(keyword_lower)
+
+        if matched_keywords:
+            matches.append({
+                "title": topic["title"],
+                "link": topic["link"],
+                "keywords": matched_keywords
+            })
+
+    if not matches:
+        return "No matching HN topics found."
+
+    message = "Matching HN topics:\n\n"
+
+    for item in matches[:10]:
+        keywords_text = ", ".join(item["keywords"])
+
+        message += (
+            f"{item['title']}\n"
+            f"Keywords: {keywords_text}\n"
+            f"{item['link']}\n\n"
+        )
+
+    return message
