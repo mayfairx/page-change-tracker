@@ -310,9 +310,14 @@ def get_hn_topics(url):
     soup = BeautifulSoup(content, "html.parser")
 
     topics = []
-    title_lines = soup.find_all("span", class_="titleline")
+    rows = soup.find_all("tr", class_="athing")
 
-    for title_line in title_lines:
+    for row in rows:
+        title_line = row.find("span", class_="titleline")
+
+        if title_line is None:
+            continue
+
         link_tag = title_line.find("a")
 
         if link_tag is None:
@@ -322,9 +327,20 @@ def get_hn_topics(url):
         link = link_tag["href"]
         full_link = urljoin(url, link)
 
+        age = "Unknown time"
+
+        subtext_row = row.find_next_sibling("tr")
+
+        if subtext_row is not None:
+            age_tag = subtext_row.find("span", class_="age")
+
+            if age_tag is not None:
+                age = age_tag.text
+            
         topics.append({
             "title": title,
-            "link": full_link
+            "link": full_link,
+            "age": age
         })
 
     return topics
@@ -353,6 +369,7 @@ def get_hn_matches(url, keywords):
             matches.append({
                 "title": topic["title"],
                 "link": topic["link"],
+                "age": topic["age"],
                 "keywords": matched_keywords
             })
 
@@ -374,6 +391,7 @@ def check_hn_topics(url, keywords):
 
         message += (
             f"{item['title']}\n"
+            f"Time: {item['age']}\n"
             f"Keywords: {keywords_text}\n"
             f"{item['link']}\n\n"
         )
