@@ -336,6 +336,7 @@ async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
                     text=(
                         "New HN topic:\n\n"
                         f"{item['title']}\n"
+                        f"Time: {item['age']}\n"
                         f"Keywords: {keywords_text}\n"
                         f"{item['link']}"
                     )
