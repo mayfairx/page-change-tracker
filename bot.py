@@ -23,6 +23,8 @@ from page_checker import (
     show_keywords,
     check_saved_keywords,
     check_hn_topics,
+    track_hn_page,
+    get_hn_matches,
 )
 
 load_dotenv()
@@ -257,6 +259,94 @@ async def check_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(result)
 
+async def track_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 2:
+        await update.effective_message.reply_text(
+            "Use: /track_hn <url> <minutes> <keyword1> <keyword2>\n\n"
+            "Or save keywords first with /set_keywords and use:\n"
+            "/track_hn <url> <minutes>"
+        )
+        return
+
+    url = context.args[0]
+    interval = context.args[1]
+
+    if not interval.isdigit():
+        await update.effective_message.reply_text(
+            "Interval must be a number. Example: /track_hn https://news.ycombinator.com/newest 1 ai python"
+        )
+        return
+
+    interval = int(interval)
+    chat_id = str(update.effective_chat.id)
+
+    keywords = context.args[2:]
+
+    if not keywords:
+        state = read_state()
+
+        if chat_id not in state or "keywords" not in state[chat_id]:
+            await update.effective_message.reply_text(
+                "No keywords provided or saved.\n\n"
+                "Use: /track_hn <url> <minutes> <keyword1> <keyword2>\n"
+                "Or save keywords first with /set_keywords."
+            )
+            return
+
+        keywords = state[chat_id]["keywords"]
+
+    result = track_hn_page(chat_id, url, interval, keywords)
+
+    await update.effective_message.reply_text(result)
+
+async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
+    state = read_state()
+    current_time = time.time()
+
+    for chat_id, user_data in state.items():
+        if not isinstance(user_data, dict):
+            continue
+
+        hn_tracks = user_data.get("hn_tracks", {})
+
+        for url, data in hn_tracks.items():
+            interval = data["interval"] * 60
+            last_check = data["last_check"]
+
+            if current_time - last_check < interval:
+                continue
+
+            matches = get_hn_matches(url, data["keywords"])
+
+            state[chat_id]["hn_tracks"][url]["last_check"] = current_time
+
+            if matches is None:
+                continue
+
+            seen_links = data.get("seen_links", [])
+
+            for item in matches:
+                if item["link"] in seen_links:
+                    continue
+
+                keywords_text = ", ".join(item["keywords"])
+
+                await context.bot.send_message(
+                    chat_id=int(chat_id),
+                    text=(
+                        "New HN topic:\n\n"
+                        f"{item['title']}\n"
+                        f"Keywords: {keywords_text}\n"
+                        f"{item['link']}"
+                    )
+                )
+
+                seen_links.append(item["link"])
+
+            state[chat_id]["hn_tracks"][url]["seen_links"] = seen_links
+
+    write_state(state)
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
@@ -278,7 +368,10 @@ app.add_handler(CommandHandler("set_keywords", set_keywords_command))
 app.add_handler(CommandHandler("show_keywords", show_keywords_command))
 app.add_handler(CommandHandler("check_saved_keywords", check_saved_keywords_command))
 app.add_handler(CommandHandler("check_hn", check_hn))
+app.add_handler(CommandHandler("track_hn", track_hn))
+
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
+app.job_queue.run_repeating(check_hn_tracks, interval=30, first=10)
 
 app.run_polling(drop_pending_updates=True)

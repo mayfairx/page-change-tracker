@@ -36,6 +36,8 @@ Third, it can check webpages for custom keywords. Users can check keywords direc
 
 Fourth, it can parse Hacker News topic titles and return matching topics with their links. This is more precise than checking the full page HTML because it searches inside topic titles and returns the related links.
 
+For Hacker News topic matching, keywords are matched as full words using regular expressions. This helps avoid false matches where a short keyword appears inside another word.
+
 ## Project Structure
 
 - `bot.py` — Telegram bot commands and scheduled checks
@@ -142,6 +144,7 @@ Check Hacker News topics by keywords:
 - Supports single and multiple keyword checks
 - Supports user-specific saved keywords
 - Can parse Hacker News topic titles and return matching links
+- Uses regular expressions for more accurate Hacker News keyword matching
 - Stores data in `state.json`
 - Supports scheduled checks with `python-telegram-bot[job-queue]`
 - Listing parsing and Hacker News parsing are site-specific and may need adapters for other websites

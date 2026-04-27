@@ -1,6 +1,7 @@
 import requests
 import hashlib
 import json
+import re
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -73,11 +74,22 @@ def show_tracked_pages(chat_id):
         return "No tracked pages."
     
     message = "Tracked pages:\n\n"
+    has_pages = False
 
     for url, data in state[chat_id].items():
+        if not isinstance(data, dict):
+            continue
+        
+        if "hash" not in data:
+            continue
+        
         interval = data["interval"]
         message += f"{url} — every {interval} min\n"
+        has_pages = True
 
+    if not has_pages:
+        return "No tracked pages."
+        
     return message
 
 def reset_tracked_pages():
@@ -317,13 +329,12 @@ def get_hn_topics(url):
 
     return topics
 
-
-def check_hn_topics(url, keywords):
+def get_hn_matches(url, keywords):
     topics = get_hn_topics(url)
 
     if topics is None:
-        return "Could not get HN topics."
-
+        return None
+    
     matches = []
 
     for topic in topics:
@@ -333,7 +344,9 @@ def check_hn_topics(url, keywords):
         for keyword in keywords:
             keyword_lower = keyword.lower()
 
-            if keyword_lower in title_lower:
+            pattern = r"\b" + re.escape(keyword_lower) + r"\b"
+
+            if re.search(pattern, title_lower):
                 matched_keywords.append(keyword_lower)
 
         if matched_keywords:
@@ -343,9 +356,17 @@ def check_hn_topics(url, keywords):
                 "keywords": matched_keywords
             })
 
+    return matches 
+
+def check_hn_topics(url, keywords):
+    matches = get_hn_matches(url, keywords)
+
+    if matches is None:
+        return "Could not get HN topics."
+
     if not matches:
         return "No matching HN topics found."
-
+    
     message = "Matching HN topics:\n\n"
 
     for item in matches[:10]:
@@ -358,3 +379,39 @@ def check_hn_topics(url, keywords):
         )
 
     return message
+
+def track_hn_page(chat_id, url, interval, keywords):
+    matches = get_hn_matches(url, keywords)
+
+    if matches is None:
+        return "Could not get HN topics."
+
+    state = read_state()
+
+    if chat_id not in state:
+        state[chat_id] = {}
+
+    if "hn_tracks" not in state[chat_id]:
+        state[chat_id]["hn_tracks"] = {}
+
+    seen_links = []
+
+    for item in matches:
+        seen_links.append(item["link"])
+
+    state[chat_id]["hn_tracks"][url] = {
+        "interval": interval,
+        "last_check": 0,
+        "keywords": keywords,
+        "seen_links": seen_links
+    }
+
+    write_state(state)
+
+    return (
+        "HN tracking enabled.\n\n"
+        f"URL: {url}\n"
+        f"Interval: {interval} min\n"
+        f"Keywords: {', '.join(keywords)}\n"
+        f"Current matching topics saved: {len(seen_links)}"
+    )
