@@ -1,79 +1,178 @@
 # Page Change Tracker
 
-A Telegram bot built with Python for monitoring webpages, checking keywords, parsing RSS feeds, and tracking live sources like Hacker News.
+Telegram keyword monitoring bot for structured sources like Hacker News and BBC RSS feeds.
 
-## Features
+The bot can check sources by keywords, save keyword lists, monitor Hacker News in the background, and show active monitors in a Telegram watchlist.
 
-### Page tracking
+## What it does
 
-- `/check <url>` — manually check if a webpage changed
-- `/track <url> <minutes>` — automatically track webpage changes
-- `/untrack <url>` — stop tracking a webpage
-- `/show` — show tracked webpages
-- `/reset` — clear tracked data
+- Checks preset sources by keywords
+- Supports Hacker News and BBC RSS feeds
+- Tracks Hacker News in the background
+- Sends Telegram alerts for new matching HN topics
+- Saves user keywords
+- Shows active monitors with `/watchlist`
+- Cleans keyword input automatically, so `ai, python, bot` becomes `ai`, `python`, `bot`
 
-### Listings
+## Demo
 
-- `/listings <url>` — show parsed listings from a supported page
-- `/new_listings <url>` — check for new listings based on saved links
+```text
+/check_source hn ai, python, bot
+```
 
-### Keywords
+```text
+Adapter: Structured Link Feed
+Detected profile: Hacker News
+Source: Hacker News
 
-- `/check_keyword <url> <keyword>` — check if a page contains one keyword
-- `/check_keywords <url> <keyword1> <keyword2>` — check if a page contains multiple keywords
-- `/set_keywords <keyword1> <keyword2>` — save a custom keyword list
-- `/show_keywords` — show saved keywords
-- `/check_saved_keywords <url>` — check a page using saved keywords
+Matching items:
 
-### Hacker News
+From spaghetti to main bus: refactoring an AI agent orchestrator with Elm
+Time: 3 minutes ago
+Keywords: ai
+https://...
+```
 
-- `/check_hn <url> <keyword1> <keyword2>` — manually check Hacker News topics by keywords
-- `/track_hn <url> <minutes> <keyword1> <keyword2>` — track new Hacker News topics in the background
-- `/track_hn <url> <minutes>` — track Hacker News using saved keywords
+```text
+/watchlist
+```
 
-### Source presets
+```text
+Watchlist
 
-- `/check_source bbc_all <keyword1> <keyword2>` — check multiple BBC RSS feeds at once
-- `/check_source hacker_news <keyword1> <keyword2>` — check Hacker News without manually entering the URL
-- `/check_source bbc <keyword1> <keyword2>` — shortcut for BBC All
-- `/check_source hn <keyword1> <keyword2>` — shortcut for Hacker News
+Hacker News monitors:
+– https://news.ycombinator.com/newest
+  Every: 1 min
+  Keywords: ai, python, bot
+  Seen links: 2
 
-### General
+Saved keywords:
+ai, python, bot, problem, api, prompt, trump
+```
 
-- `/start` — show the quick start guide
-- `/help` — show available commands
+## Supported sources
 
-## How It Works
+| Source | Key | Adapter | Status |
+|---|---|---|---|
+| Hacker News | `hacker_news` / `hn` | Structured Link Feed | Check + background tracking |
+| BBC News | `bbc_all` / `bbc` | RSS Feed | Check only |
 
-The bot supports several monitoring and parsing modes.
+## Main commands
 
-First, it can detect full webpage changes. It downloads the page HTML, creates a SHA-256 hash of the content, saves it, and compares it with future checks. If the hash changes, the bot sends a Telegram notification.
+### Check a source now
 
-Second, it can parse structured listing cards from supported pages. It extracts listing titles, prices, and links, then saves already-seen links. If a new link appears later, the bot can detect it as a new listing.
+```text
+/check_source <source> <keywords>
+```
 
-Third, it can check webpages for custom keywords. Users can check keywords directly in a command or save a keyword list and reuse it later.
+Examples:
 
-Fourth, it can parse Hacker News topic titles and return matching topics with their links and post age. This is more precise than checking the full page HTML because it searches inside topic titles and returns the related links.
+```text
+/check_source hn ai python bot
+/check_source bbc_all government police trump
+```
 
-Fifth, it can track Hacker News in the background. When tracking is enabled, the bot saves current matching topics as already seen. After that, it checks the page on a schedule and sends Telegram alerts only for new matching topics.
+### Save keywords
 
-Finally, it supports source presets. Instead of manually entering technical feed URLs, the user can choose a simple source key like `bbc_all` or `hacker_news`. The bot then uses the correct internal URL and adapter logic.
+```text
+/set_keywords ai python bot
+```
 
-## Source Presets
+You can also use commas:
+
+```text
+/set_keywords ai, python, bot
+```
+
+The bot will normalize the input into clean keywords.
+
+### Show saved keywords
+
+```text
+/show_keywords
+```
+
+### Track Hacker News in the background
+
+```text
+/track_hn https://news.ycombinator.com/newest 1 ai python bot
+```
+
+Or use saved keywords:
+
+```text
+/set_keywords ai python bot
+/track_hn https://news.ycombinator.com/newest 1
+```
+
+### Show active monitors
+
+```text
+/watchlist
+```
+
+## Current architecture
+
+The project currently has several parts:
+
+```text
+bot.py
+```
+
+Handles Telegram commands, user input, and scheduled background checks.
+
+```text
+page_checker.py
+```
+
+Handles page loading, keyword logic, RSS parsing, Hacker News parsing, source presets, state handling, and watchlist output.
+
+```text
+state.json
+```
+
+Stores saved keywords, active monitors, seen links, intervals, and last check time.
+
+## How the bot works
+
+### Manual source check
+
+```text
+/check_source hn ai python
+```
+
+Flow:
+
+```text
+Telegram command
+→ source key
+→ source preset
+→ adapter logic
+→ keyword matching
+→ formatted Telegram response
+```
+
+### Hacker News background tracking
+
+```text
+/track_hn https://news.ycombinator.com/newest 1 ai python
+```
+
+Flow:
+
+```text
+Start tracking
+→ get current matching topics
+→ save current links as seen_links
+→ check again every interval
+→ send alert only for new matching links
+```
+
+This prevents old posts from being sent as new alerts.
+
+## Source presets
 
 Source presets hide technical URLs from the user.
-
-Instead of writing:
-
-```text
-/check_rss https://feeds.bbci.co.uk/news/rss.xml?edition=uk government police
-```
-
-the user can write:
-
-```text
-/check_source bbc_all government police
-```
 
 Instead of writing:
 
@@ -84,60 +183,53 @@ Instead of writing:
 the user can write:
 
 ```text
-/check_source hacker_news ai python
+/check_source hn ai python
 ```
 
-Available source presets:
+Instead of writing:
 
-| Source key | Adapter | Profile | Description |
-|---|---|---|---|
-| `bbc_all` | RSS Feed | BBC News | Checks several BBC RSS feeds at once |
-| `bbc` | RSS Feed | BBC News | Shortcut for `bbc_all` |
-| `hacker_news` | Structured Link Feed | Hacker News | Checks Hacker News newest page |
-| `hn` | Structured Link Feed | Hacker News | Shortcut for `hacker_news` |
+```text
+/check_rss https://feeds.bbci.co.uk/news/rss.xml?edition=uk trump police
+```
 
-## Adapter Logic
+the user can write:
 
-The project is moving toward an adapter-based structure.
+```text
+/check_source bbc_all trump police
+```
+
+## Adapter idea
+
+The project is moving toward an adapter-based system.
 
 Current adapters:
 
 - **Structured Link Feed** — used for Hacker News-style structured link pages
-- **RSS Feed** — used for RSS feeds such as BBC News
+- **RSS Feed** — used for BBC RSS feeds
 
 Current profiles:
 
-- **Hacker News** — parses Hacker News topics, links, and post age
-- **BBC News** — parses BBC RSS feeds and checks multiple categories through `bbc_all`
+- **Hacker News**
+- **BBC News**
 
-The goal is to keep the user-facing commands simple while keeping parsing logic flexible internally.
-
-## Hacker News Tracking Logic
-
-`/check_hn` is used for manual checks. It shows matching topics that are currently visible on the Hacker News page.
-
-`/track_hn` starts background tracking. On the first run, it saves current matching topic links into `seen_links`, so old topics are not sent as new alerts. After that, the bot checks Hacker News repeatedly and sends only newly detected matching topics.
-
-For Hacker News topic matching, keywords are matched as full words using regular expressions. This helps avoid false matches where a short keyword appears inside another word.
-
-## Project Structure
-
-- `bot.py` — Telegram bot commands, handlers, and scheduled background checks
-- `page_checker.py` — page requests, hashing, listing parsing, RSS parsing, keyword logic, Hacker News parsing, source presets, and state handling
-- `state.json` — saved tracked pages, listing links, keywords, and HN tracking data
-- `requirements.txt` — project dependencies
-- `.env` — bot token
-- `.gitignore` — ignored files
+The goal is to keep user-facing commands simple while keeping parsing logic flexible internally.
 
 ## Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/YOUR_USERNAME/page-change-tracker.git
+cd page-change-tracker
+```
+
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Setup & Run
-
-Create a `.env` file:
+Create `.env`:
 
 ```env
 BOT_TOKEN=your_telegram_bot_token
@@ -149,96 +241,61 @@ Run the bot:
 python bot.py
 ```
 
-## Example Commands
+## Requirements
 
-Track a webpage:
+Main libraries:
 
-```text
-/track https://example.com 5
-```
+- `python-telegram-bot`
+- `python-dotenv`
+- `requests`
+- `beautifulsoup4`
+- `feedparser`
 
-Manually check a webpage:
+## Project status
 
-```text
-/check https://example.com
-```
+This is a working learning project that is evolving into a small Telegram monitoring tool.
 
-Show tracked webpages:
+Current stable features:
 
-```text
-/show
-```
+- Telegram bot commands
+- Hacker News parsing
+- BBC RSS parsing
+- Source presets
+- Keyword normalization
+- Saved keywords
+- Hacker News background tracking
+- Watchlist view
 
-Check one keyword:
+Known limitations:
 
-```text
-/check_keyword https://example.com example
-```
+- BBC source currently supports manual checking, not background tracking
+- Hacker News tracking still uses a temporary internal structure
+- Old development commands still exist in code
+- Storage currently uses `state.json`
+- No database yet
+- No button UI yet
 
-Check multiple keywords:
+## Roadmap
 
-```text
-/check_keywords https://example.com example domain
-```
+Planned improvements:
 
-Save keywords:
+- Replace `hn_tracks` with universal `monitors`
+- Add `/track` support for source presets
+- Add BBC background monitoring
+- Add universal `/untrack`
+- Add Telegram button UI
+- Split the large logic file into modules
+- Add SQLite storage
+- Add custom RSS URLs
+- Add deployment guide
 
-```text
-/set_keywords example domain update
-```
+## Example use cases
 
-Show saved keywords:
+- Track Hacker News for AI, Python, startup, API, or product keywords
+- Check BBC news feeds for politics, business, technology, or world events
+- Save a keyword list and reuse it later
+- Get Telegram alerts when new matching HN topics appear
 
-```text
-/show_keywords
-```
+## License
 
-Check Hacker News manually:
-
-```text
-/check_hn https://news.ycombinator.com/newest ai bot python
-```
-
-Track Hacker News topics:
-
-```text
-/track_hn https://news.ycombinator.com/newest 1 ai bot python
-```
-
-Check BBC All through source presets:
-
-```text
-/check_source bbc_all government minister police trump
-```
-
-Check Hacker News through source presets:
-
-```text
-/check_source hacker_news ai python bot
-```
-
-Use shortcuts:
-
-```text
-/check_source bbc ai trump
-/check_source hn ai python
-```
-
-## Notes
-
-- Uses `requests` to load webpages
-- Uses `BeautifulSoup` to parse supported HTML pages
-- Uses `feedparser` to parse RSS feeds
-- Uses SHA-256 hashes to detect full page changes
-- Uses saved listing links to detect new listings
-- Supports single and multiple keyword checks
-- Supports user-specific saved keywords
-- Can parse Hacker News topic titles, links, and post age
-- Can track new Hacker News topics in the background
-- Uses `seen_links` to avoid duplicate HN alerts
-- Uses regular expressions for more accurate keyword matching
-- Supports source presets such as `bbc_all` and `hacker_news`
-- Stores data in `state.json`
-- Supports scheduled checks with `python-telegram-bot[job-queue]`
-- Listing parsing, Hacker News parsing, and RSS parsing are source-specific
-- The bot does not yet support universal parsing for every website
+MIT
