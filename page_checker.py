@@ -302,6 +302,20 @@ def check_saved_keywords(chat_id, url):
     
     return check_keywords(url, keywords)
 
+def normalize_keywords(keywords):
+    clean_keywords = []
+
+    for keyword in keywords:
+        parts = keyword.split(",")
+
+        for part in parts:
+            clean_keyword = part.strip().lower()
+
+            if clean_keyword:
+                clean_keywords.append(clean_keyword)
+
+    return clean_keywords     
+
 def get_hn_topics(url):
     content = get_page_content(url)
 

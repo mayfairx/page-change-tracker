@@ -28,6 +28,7 @@ from page_checker import (
     check_rss_feed,
     check_source_preset,
     show_watchlist,
+    normalize_keywords,
 )
 
 load_dotenv()
@@ -150,7 +151,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/show_keywords\n\n"
         "Tracking:\n"
         "/track_hn <url> <minutes> <keywords>\n"
-        "/show\n"
+        "/watchlist\n"
         "/untrack <url>\n\n"
         "Examples:\n"
         "/check_source bbc_all trump police\n"
@@ -228,7 +229,11 @@ async def set_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     
     chat_id = str(update.effective_chat.id)
-    keywords = context.args
+    keywords = normalize_keywords(context.args)
+
+    if not keywords:
+        await update.effective_message.reply_text("No valid keywords provided.")
+        return
 
     result = set_keywords(chat_id, keywords)
 
@@ -301,7 +306,7 @@ async def track_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     interval = int(interval)
     chat_id = str(update.effective_chat.id)
 
-    keywords = context.args[2:]
+    keywords = normalize_keywords(context.args[2:])
 
     if not keywords:
         state = read_state()
@@ -383,7 +388,11 @@ async def check_source(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     source_key = context.args[0]
-    keywords = context.args[1:]
+    keywords = normalize_keywords(context.args[1:])
+
+    if not keywords:
+        await update.effective_message.reply_text("No valid keywords provided.")
+        return
 
     result = check_source_preset(source_key, keywords)
 
