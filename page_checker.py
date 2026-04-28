@@ -444,7 +444,7 @@ def get_rss_items(url):
     items = []
 
     for entry in feed.entries:
-        title = entry.get("title", "No  title")
+        title = entry.get("title", "No title")
         link = entry.get("link", url)
         published = entry.get("published", entry.get("updated", "Unknown time"))
         summary = entry.get("summary", "")
@@ -456,7 +456,7 @@ def get_rss_items(url):
             "summary": summary
         })
 
-        return items
+    return items
 
 def check_rss_feed(url, keywords):
     items = get_rss_items(url)
