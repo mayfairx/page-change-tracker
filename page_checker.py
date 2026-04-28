@@ -651,3 +651,82 @@ def check_source_preset(source_key, keywords):
         "hn\n"
         "bbc"
     )
+
+def show_watchlist(chat_id):
+    state = read_state()
+    user_data = state.get(chat_id, {})
+
+    if not isinstance(user_data, dict) or not user_data:
+        return (
+            "Watchlist\n\n"
+            "No active monitors.\n\n"
+            "Saved keywords: none"
+        )
+
+    message = "Watchlist\n\n"
+    has_monitors = False
+
+    page_monitors = []
+
+    for url, data in user_data.items():
+        if url in ["keywords", "hn_tracks"]:
+            continue
+
+        if not isinstance(data, dict):
+            continue
+
+        if "hash" not in data:
+            continue
+
+        interval = data.get("interval", "?")
+
+        page_monitors.append(
+            f"– {url}\n"
+            f"  Every: {interval} min"
+        )
+
+    if page_monitors:
+        has_monitors = True
+        message += "Page monitors:\n"
+        message += "\n\n".join(page_monitors)
+        message += "\n\n"
+
+    hn_tracks = user_data.get("hn_tracks", {})
+    hn_monitors = []
+
+    if isinstance(hn_tracks, dict):
+        for url, data in hn_tracks.items():
+            if not isinstance(data, dict):
+                continue
+
+            interval = data.get("interval", "?")
+            keywords = data.get("keywords", [])
+            seen_links = data.get("seen_links", [])
+
+            keywords_text = ", ".join(keywords)
+
+            hn_monitors.append(
+                f"– {url}\n"
+                f"  Every: {interval} min\n"
+                f"  Keywords: {keywords_text}\n"
+                f"  Seen links: {len(seen_links)}"
+            )
+
+    if hn_monitors:
+        has_monitors = True
+        message += "Hacker News monitors:\n"
+        message += "\n\n".join(hn_monitors)
+        message += "\n\n"
+
+    if not has_monitors:
+        message += "No active monitors.\n\n"
+
+    saved_keywords = user_data.get("keywords", [])
+
+    if saved_keywords:
+        message += "Saved keywords:\n"
+        message += ", ".join(saved_keywords)
+    else:
+        message += "Saved keywords: none"
+
+    return message

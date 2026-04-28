@@ -27,6 +27,7 @@ from page_checker import (
     get_hn_matches,
     check_rss_feed,
     check_source_preset,
+    show_watchlist,
 )
 
 load_dotenv()
@@ -388,6 +389,13 @@ async def check_source(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(result)
 
+async def watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = str(update.effective_chat.id)
+
+    result = show_watchlist(chat_id)
+
+    await update.effective_message.reply_text(result)
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
@@ -412,6 +420,7 @@ app.add_handler(CommandHandler("check_hn", check_hn))
 app.add_handler(CommandHandler("track_hn", track_hn))
 app.add_handler(CommandHandler("check_rss", check_rss))
 app.add_handler(CommandHandler("check_source", check_source))
+app.add_handler(CommandHandler("watchlist", watchlist))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 app.job_queue.run_repeating(check_hn_tracks, interval=30, first=10)
