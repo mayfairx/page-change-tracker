@@ -505,3 +505,149 @@ def check_rss_feed(url, keywords):
         )
 
     return message
+
+HACKER_NEWS_URL = "https://news.ycombinator.com/newest"
+
+BBC_ALL_FEEDS = [
+    {
+        "name": "BBC Top Stories",
+        "url": "https://feeds.bbci.co.uk/news/rss.xml?edition=uk"
+    },
+    {
+        "name": "BBC World",
+        "url": "https://feeds.bbci.co.uk/news/world/rss.xml"
+    },
+    {
+        "name": "BBC UK",
+        "url": "https://feeds.bbci.co.uk/news/uk/rss.xml"
+    },
+    {
+        "name": "BBC Business",
+        "url": "https://feeds.bbci.co.uk/news/business/rss.xml"
+    },
+    {
+        "name": "BBC Technology",
+        "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"
+    },
+    {
+        "name": "BBC Science",
+        "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"
+    },
+    {
+        "name": "BBC Entertainment",
+        "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"
+    }
+]
+
+def check_hacker_news_source(keywords):
+    matches = get_hn_matches(HACKER_NEWS_URL, keywords)
+
+    if matches is None:
+        return "Could not get Hacker News topics."
+
+    if not matches:
+        return "No matching Hacker News topics found."
+
+    message = (
+        "Adapter: Structured Link Feed\n"
+        "Detected profile: Hacker News\n"
+        "Source: Hacker News\n\n"
+        "Matching items:\n\n"
+    )
+
+    for item in matches[:10]:
+        keywords_text = ", ".join(item["keywords"])
+
+        message += (
+            f"{item['title']}\n"
+            f"Time: {item['age']}\n"
+            f"Keywords: {keywords_text}\n"
+            f"{item['link']}\n\n"
+        )
+
+    return message
+
+def check_bbc_all_source(keywords):
+    matches = []
+    seen_links = set()
+    feeds_checked = 0
+    
+    for feed_info in BBC_ALL_FEEDS:
+        feed_name = feed_info["name"]
+        feed_url = feed_info["url"]
+
+        items = get_rss_items(feed_url)
+
+        if items is None:
+            continue
+
+        feeds_checked += 1
+
+        for item in items: 
+            text = f"{item['title']} {item['summary']}".lower()
+            matched_keywords = []
+
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+                pattern = r"\b" + re.escape(keyword_lower) + r"\b"
+
+                if re.search(pattern, text):
+                    matched_keywords.append(keyword_lower)
+
+            if matched_keywords:
+                if item['link'] in seen_links:
+                    continue
+                
+                seen_links.add(item["link"])
+
+                matches.append({
+                    "source": feed_name, 
+                    "title": item["title"],
+                    "link": item["link"],
+                    "published": item["published"],
+                    "keywords": matched_keywords
+                })
+
+    if feeds_checked == 0:
+        return "Could not get BBC RSS feeds."
+    
+    if not matches:
+        return "No matching BBC items found."
+    
+    message = (
+        "Adapter: RSS Feed\n"
+        "Detected profile: BBC News\n"
+        "Source: BBC All\n\n"
+        "Matching items:\n\n"
+    )
+
+    for item in matches[:10]:
+        keywords_text = ", ".join(item["keywords"])
+
+        message += (
+            f"{item['title']}\n"
+            f"Feed: {item['source']}\n"
+            f"Published: {item['published']}\n"
+            f"Keywords: {keywords_text}\n"
+            f"{item['link']}\n\n"
+        )
+
+    return message
+
+def check_source_preset(source_key, keywords):
+    source_key = source_key.strip().lower()
+
+    if source_key in ["hacker_news", "hn"]:
+        return check_hacker_news_source(keywords)
+
+    if source_key in ["bbc_all", "bbc"]:
+        return check_bbc_all_source(keywords)
+
+    return (
+        "Unknown source.\n\n"
+        "Available sources:\n"
+        "bbc_all\n"
+        "hacker_news\n"
+        "hn\n"
+        "bbc"
+    )

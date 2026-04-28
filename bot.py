@@ -26,6 +26,7 @@ from page_checker import (
     track_hn_page,
     get_hn_matches,
     check_rss_feed,
+    check_source_preset,
 )
 
 load_dotenv()
@@ -365,6 +366,26 @@ async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
 
     write_state(state)
 
+async def check_source(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 2:
+        await update.effective_message.reply_text(
+            "Use: /check_source <source> <keyword1> <keyword2>\n\n"
+            "Available sources:\n"
+            "bbc_all\n"
+            "hacker_news\n\n"
+            "Examples:\n"
+            "/check_source bbc_all ai trump police\n"
+            "/check_source hacker_news ai python bot"
+        )
+        return
+
+    source_key = context.args[0]
+    keywords = context.args[1:]
+
+    result = check_source_preset(source_key, keywords)
+
+    await update.effective_message.reply_text(result)
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
@@ -388,6 +409,7 @@ app.add_handler(CommandHandler("check_saved_keywords", check_saved_keywords_comm
 app.add_handler(CommandHandler("check_hn", check_hn))
 app.add_handler(CommandHandler("track_hn", track_hn))
 app.add_handler(CommandHandler("check_rss", check_rss))
+app.add_handler(CommandHandler("check_source", check_source))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 app.job_queue.run_repeating(check_hn_tracks, interval=30, first=10)
