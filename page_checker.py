@@ -2,6 +2,7 @@ import requests
 import hashlib
 import json
 import re
+import feedparser
 
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -433,3 +434,74 @@ def track_hn_page(chat_id, url, interval, keywords):
         f"Keywords: {', '.join(keywords)}\n"
         f"Current matching topics saved: {len(seen_links)}"
     )
+
+def get_rss_items(url):
+    feed = feedparser.parse(url)
+
+    if not feed.entries:
+        return None
+    
+    items = []
+
+    for entry in feed.entries:
+        title = entry.get("title", "No  title")
+        link = entry.get("link", url)
+        published = entry.get("published", entry.get("updated", "Unknown time"))
+        summary = entry.get("summary", "")
+
+        items.append({
+            "title": title,
+            "link": link,
+            "published": published,
+            "summary": summary
+        })
+
+        return items
+
+def check_rss_feed(url, keywords):
+    items = get_rss_items(url)
+
+    if items is None:
+        return "Could not get RSS feed."
+    
+    matches = []
+
+    for item in items:
+        text = f"{item['title']} {item['summary']}".lower()
+        matched_keywords = []
+
+        for keyword in keywords:
+            keyword_lower = keyword.lower()
+            pattern = r"\b" + re.escape(keyword_lower) + r"\b"
+
+            if re.search(pattern, text):
+                matched_keywords.append(keyword_lower)
+
+        if matched_keywords:
+            matches.append({
+                "title": item["title"],
+                "link": item["link"],
+                "published": item["published"],
+                "keywords": matched_keywords
+            })
+
+    if not matches:
+        return "No matching RSS items found."
+    
+    message = (
+        "Adapter: RSS Feed\n"
+        "Detected profile: BBC News\n\n"
+        "Matching RSS items:\n\n"
+    )
+
+    for item in matches[:10]:
+        keywords_text = ", ".join(item["keywords"])
+
+        message += (
+            f"{item['title']}\n"
+            f"Published: {item['published']}\n"
+            f"Keywords: {keywords_text}\n"
+            f"{item['link']}\n\n"
+        )
+
+    return message

@@ -25,6 +25,7 @@ from page_checker import (
     check_hn_topics,
     track_hn_page,
     get_hn_matches,
+    check_rss_feed,
 )
 
 load_dotenv()
@@ -259,6 +260,22 @@ async def check_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(result)
 
+async def check_rss(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 2:
+        await update.effective_message.reply_text(
+            "Use: /check_rss <url> <keyword1> <keyword2>\n\n"
+            "Example:\n"
+            "/check_rss https://feeds.bbci.co.uk/news/uk/rss.xml london police"
+        )
+        return
+    
+    url = context.args[0]
+    keywords = context.args[1:]
+
+    result = check_rss_feed(url, keywords)
+
+    await update.effective_message.reply_text(result)
+
 async def track_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
         await update.effective_message.reply_text(
@@ -370,7 +387,7 @@ app.add_handler(CommandHandler("show_keywords", show_keywords_command))
 app.add_handler(CommandHandler("check_saved_keywords", check_saved_keywords_command))
 app.add_handler(CommandHandler("check_hn", check_hn))
 app.add_handler(CommandHandler("track_hn", track_hn))
-
+app.add_handler(CommandHandler("check_rss", check_rss))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 app.job_queue.run_repeating(check_hn_tracks, interval=30, first=10)
