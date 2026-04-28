@@ -424,25 +424,46 @@ def track_hn_page(chat_id, url, interval, keywords):
     if chat_id not in state:
         state[chat_id] = {}
 
-    if "hn_tracks" not in state[chat_id]:
-        state[chat_id]["hn_tracks"] = {}
-
     seen_links = []
 
     for item in matches:
         seen_links.append(item["link"])
 
-    state[chat_id]["hn_tracks"][url] = {
+    monitor_data = {
+        "source": "hacker_news",
+        "adapter": "structured_link_feed",
+        "profile": "Hacker News",
+        "url": url,
         "interval": interval,
         "last_check": 0,
         "keywords": keywords,
         "seen_links": seen_links
     }
 
+    if "monitors" not in state[chat_id]:
+        state[chat_id]["monitors"] = {}
+
+    state[chat_id]["monitors"][url] = monitor_data
+
+    # Temporary compatibility for old background HN tracking.
+    # Later we will remove hn_tracks and make everything read from monitors.
+    if "hn_tracks" not in state[chat_id]:
+        state[chat_id]["hn_tracks"] = {}
+
+    state[chat_id]["hn_tracks"][url] = {
+        "interval": interval,
+        "last_check": 0,
+        "keywords": keywords,
+        "seen_links": seen_links.copy()
+    }
+
     write_state(state)
 
     return (
-        "HN tracking enabled.\n\n"
+        "Monitor enabled.\n\n"
+        "Source: Hacker News\n"
+        "Adapter: Structured Link Feed\n"
+        "Profile: Hacker News\n"
         f"URL: {url}\n"
         f"Interval: {interval} min\n"
         f"Keywords: {', '.join(keywords)}\n"
