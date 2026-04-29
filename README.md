@@ -2,7 +2,7 @@
 
 Telegram keyword monitoring bot for structured sources like Hacker News and BBC RSS feeds.
 
-The bot can check sources by keywords, save keyword lists, monitor Hacker News in the background, and show active monitors in a Telegram watchlist.
+The bot can check preset sources by keywords, save keyword lists, monitor Hacker News in the background, and show active monitors in a Telegram watchlist.
 
 ## What it does
 
@@ -13,6 +13,7 @@ The bot can check sources by keywords, save keyword lists, monitor Hacker News i
 - Saves user keywords
 - Shows active monitors with `/watchlist`
 - Cleans keyword input automatically, so `ai, python, bot` becomes `ai`, `python`, `bot`
+- Stores active background monitors in a universal `monitors` state structure
 
 ## Demo
 
@@ -27,10 +28,26 @@ Source: Hacker News
 
 Matching items:
 
-From spaghetti to main bus: refactoring an AI agent orchestrator with Elm
-Time: 3 minutes ago
+Evaluating CUDA Tile for AI Workloads on Hopper and Blackwell GPUs
+Time: 0 minutes ago
 Keywords: ai
 https://...
+```
+
+```text
+/track_hn https://news.ycombinator.com/newest 1 ai, python, bot
+```
+
+```text
+Monitor enabled.
+
+Source: Hacker News
+Adapter: Structured Link Feed
+Profile: Hacker News
+URL: https://news.ycombinator.com/newest
+Interval: 1 min
+Keywords: ai, python, bot
+Current matching topics saved: 3
 ```
 
 ```text
@@ -40,11 +57,14 @@ https://...
 ```text
 Watchlist
 
-Hacker News monitors:
-– https://news.ycombinator.com/newest
+Active monitors:
+– Hacker News
+  Source: hacker_news
+  Adapter: structured_link_feed
+  URL: https://news.ycombinator.com/newest
   Every: 1 min
   Keywords: ai, python, bot
-  Seen links: 2
+  Seen links: 3
 
 Saved keywords:
 ai, python, bot, problem, api, prompt, trump
@@ -72,19 +92,27 @@ Examples:
 /check_source bbc_all government police trump
 ```
 
+You can also use commas:
+
+```text
+/check_source hn ai, python, bot
+```
+
+The bot normalizes keyword input automatically.
+
 ### Save keywords
 
 ```text
 /set_keywords ai python bot
 ```
 
-You can also use commas:
+or:
 
 ```text
 /set_keywords ai, python, bot
 ```
 
-The bot will normalize the input into clean keywords.
+Both formats are saved as clean keywords.
 
 ### Show saved keywords
 
@@ -98,7 +126,13 @@ The bot will normalize the input into clean keywords.
 /track_hn https://news.ycombinator.com/newest 1 ai python bot
 ```
 
-Or use saved keywords:
+or with commas:
+
+```text
+/track_hn https://news.ycombinator.com/newest 1 ai, python, bot
+```
+
+or using saved keywords:
 
 ```text
 /set_keywords ai python bot
@@ -113,19 +147,19 @@ Or use saved keywords:
 
 ## Current architecture
 
-The project currently has several parts:
+The project currently has several main parts:
 
 ```text
 bot.py
 ```
 
-Handles Telegram commands, user input, and scheduled background checks.
+Handles Telegram commands, user input, and scheduled background jobs.
 
 ```text
 page_checker.py
 ```
 
-Handles page loading, keyword logic, RSS parsing, Hacker News parsing, source presets, state handling, and watchlist output.
+Handles page loading, keyword logic, RSS parsing, Hacker News parsing, source presets, monitor creation, state handling, and watchlist output.
 
 ```text
 state.json
@@ -152,7 +186,9 @@ Telegram command
 → formatted Telegram response
 ```
 
-### Hacker News background tracking
+Manual checks do not save monitors and do not write tracking data.
+
+### Hacker News background monitoring
 
 ```text
 /track_hn https://news.ycombinator.com/newest 1 ai python
@@ -161,14 +197,43 @@ Telegram command
 Flow:
 
 ```text
-Start tracking
+Start monitoring
 → get current matching topics
-→ save current links as seen_links
-→ check again every interval
+→ save current matching links as seen_links
+→ store monitor in state.json
+→ background checker reads monitors
 → send alert only for new matching links
 ```
 
 This prevents old posts from being sent as new alerts.
+
+## Monitors state
+
+Background monitoring is stored in a universal `monitors` structure.
+
+Example:
+
+```json
+{
+  "chat_id": {
+    "keywords": ["ai", "python", "bot"],
+    "monitors": {
+      "https://news.ycombinator.com/newest": {
+        "source": "hacker_news",
+        "adapter": "structured_link_feed",
+        "profile": "Hacker News",
+        "url": "https://news.ycombinator.com/newest",
+        "interval": 1,
+        "last_check": 0,
+        "keywords": ["ai", "python", "bot"],
+        "seen_links": []
+      }
+    }
+  }
+}
+```
+
+Older versions used a temporary `hn_tracks` structure. Current active monitor logic uses `monitors`.
 
 ## Source presets
 
@@ -213,6 +278,26 @@ Current profiles:
 - **BBC News**
 
 The goal is to keep user-facing commands simple while keeping parsing logic flexible internally.
+
+## Keyword normalization
+
+The bot normalizes user input before saving or checking keywords.
+
+Example input:
+
+```text
+ai, python, bot
+```
+
+becomes:
+
+```text
+ai
+python
+bot
+```
+
+This makes the bot more tolerant of normal human input.
 
 ## Installation
 
@@ -263,24 +348,27 @@ Current stable features:
 - Source presets
 - Keyword normalization
 - Saved keywords
-- Hacker News background tracking
+- Hacker News background monitoring
+- Universal `monitors` state for active monitors
 - Watchlist view
+- Duplicate protection with `seen_links`
 
 Known limitations:
 
 - BBC source currently supports manual checking, not background tracking
-- Hacker News tracking still uses a temporary internal structure
+- `/track_hn` is still HN-specific
 - Old development commands still exist in code
 - Storage currently uses `state.json`
 - No database yet
-- No button UI yet
+- No Telegram button UI yet
+- The main logic file is still large and should be split later
 
 ## Roadmap
 
 Planned improvements:
 
-- Replace `hn_tracks` with universal `monitors`
-- Add `/track` support for source presets
+- Replace `/track_hn` with universal `/track`
+- Add `/track bbc_all <minutes> <keywords>`
 - Add BBC background monitoring
 - Add universal `/untrack`
 - Add Telegram button UI
@@ -288,6 +376,7 @@ Planned improvements:
 - Add SQLite storage
 - Add custom RSS URLs
 - Add deployment guide
+- Add screenshots and demo GIFs
 
 ## Example use cases
 
