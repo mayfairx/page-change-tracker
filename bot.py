@@ -15,6 +15,7 @@ from page_checker import (
     show_watchlist,
     normalize_keywords,
     track_source_monitor,
+    untrack_source_monitor
 )
 
 load_dotenv()
@@ -37,10 +38,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Background monitoring:\n"
         "/track hn ai python\n"
         "/track hn\n"
+        "/untrack hn\n"
         "/watchlist\n\n"
         "Use /help for details."
     )
-
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Main commands\n\n"
@@ -55,13 +56,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Monitoring:\n"
         "/track <source> <keywords>\n"
         "/track <source>\n"
+        "/untrack <source>\n"
         "/watchlist\n\n"
         "Examples:\n"
         "/check_source bbc trump police\n"
         "/check_source hn ai python\n"
         "/set_keywords ai, python, bot\n"
         "/track hn ai python\n"
-        "/track hn"
+        "/track hn\n"
+        "/untrack hn"
     )
 
 async def set_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,6 +128,23 @@ async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
         DEFAULT_MONITOR_INTERVAL,
         keywords
     )    
+
+    await update.effective_message.reply_text(result)
+
+async def untrack(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) != 1:
+        await update.effective_message.reply_text(
+            "Use: /untrack <source>\n\n"
+            "Examples:\n"
+            "/untrack hn\n"
+            "/untrack bbc"
+        )
+        return
+    
+    chat_id = str(update.effective_chat.id)
+    source_key = context.args[0]
+
+    result = untrack_source_monitor(chat_id, source_key)
 
     await update.effective_message.reply_text(result)
 
@@ -237,6 +257,7 @@ app.add_handler(CommandHandler("show_keywords", show_keywords_command))
 app.add_handler(CommandHandler("track", track))
 app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
+app.add_handler(CommandHandler("untrack", untrack))
 
 app.job_queue.run_repeating(check_monitors, interval=30, first=10)
 

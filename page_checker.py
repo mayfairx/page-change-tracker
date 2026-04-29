@@ -386,6 +386,60 @@ def track_source_monitor(chat_id, source_key, interval, keywords):
         "bbc"
     )
 
+def untrack_source_monitor(chat_id, source_key):
+    source_key = source_key.strip().lower()
+
+    if source_key in ["hn", "hacker_news"]:
+        source_name = "hacker_news"
+        display_name = "Hacker News"
+    elif source_key in ["bbc", "bbc_all"]:
+        source_name = "bbc_all"
+        display_name = "BBC News"
+    else:
+        return (
+            "Unknown source.\n\n"
+            "Available sources:\n"
+            "hn\n"
+            "bbc"
+        )
+
+    state = read_state()
+    user_data = state.get(chat_id, {})
+
+    if not isinstance(user_data, dict):
+        return "No active monitors."
+
+    monitors = user_data.get("monitors", {})
+
+    if not isinstance(monitors, dict) or not monitors:
+        return "No active monitors."
+
+    monitor_ids_to_remove = []
+
+    for monitor_id, data in monitors.items():
+        if not isinstance(data, dict):
+            continue
+
+        if data.get("source") == source_name:
+            monitor_ids_to_remove.append(monitor_id)
+
+    if not monitor_ids_to_remove:
+        return f"No active {display_name} monitor found."
+
+    for monitor_id in monitor_ids_to_remove:
+        del monitors[monitor_id]
+
+    if not monitors:
+        user_data.pop("monitors", None)
+
+    write_state(state)
+
+    return (
+        "Monitor disabled.\n\n"
+        f"Source: {display_name}\n"
+        f"Removed monitors: {len(monitor_ids_to_remove)}"
+    )
+
 
 def show_watchlist(chat_id):
     state = read_state()
