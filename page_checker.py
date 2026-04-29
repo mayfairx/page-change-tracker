@@ -253,6 +253,52 @@ BBC_ALL_FEEDS = [
     }
 ]
 
+def get_bbc_all_matches(keywords):
+    matches = []
+    seen_links = set()
+    feeds_checked = 0
+
+    for feed_info in BBC_ALL_FEEDS:
+        feed_name = feed_info["name"]
+        feed_url = feed_info["url"]
+
+        items = get_rss_items(feed_url)
+
+        if items is None:
+            continue
+
+        feeds_checked += 1
+
+        for item in items: 
+            text = f"{item['title']} {item['summary']}".lower()
+            matched_keywords = []
+
+            for keyword in keywords:
+                keyword_lower = keyword.lower()
+                pattern = r"\b" + re.escape(keyword_lower) + r"\b"
+
+                if re.search(pattern, text):
+                    matched_keywords.append(keyword_lower)
+
+            if matched_keywords:
+                if item["link"] in seen_links:
+                    continue
+
+                seen_links.add(item["link"])
+
+                matches.append({
+                    "source": feed_name,
+                    "title": item["title"],
+                    "link": item["link"],
+                    "published": item["published"],
+                    "keywords": matched_keywords
+                })
+
+    if feeds_checked == 0:
+        return None
+    
+    return matches
+
 def check_hacker_news_source(keywords):
     matches = get_hn_matches(HACKER_NEWS_URL, keywords)
 
@@ -282,52 +328,14 @@ def check_hacker_news_source(keywords):
     return message
 
 def check_bbc_all_source(keywords):
-    matches = []
-    seen_links = set()
-    feeds_checked = 0
-    
-    for feed_info in BBC_ALL_FEEDS:
-        feed_name = feed_info["name"]
-        feed_url = feed_info["url"]
+    matches = get_bbc_all_matches(keywords)
 
-        items = get_rss_items(feed_url)
-
-        if items is None:
-            continue
-
-        feeds_checked += 1
-
-        for item in items: 
-            text = f"{item['title']} {item['summary']}".lower()
-            matched_keywords = []
-
-            for keyword in keywords:
-                keyword_lower = keyword.lower()
-                pattern = r"\b" + re.escape(keyword_lower) + r"\b"
-
-                if re.search(pattern, text):
-                    matched_keywords.append(keyword_lower)
-
-            if matched_keywords:
-                if item['link'] in seen_links:
-                    continue
-                
-                seen_links.add(item["link"])
-
-                matches.append({
-                    "source": feed_name, 
-                    "title": item["title"],
-                    "link": item["link"],
-                    "published": item["published"],
-                    "keywords": matched_keywords
-                })
-
-    if feeds_checked == 0:
+    if matches is None:
         return "Could not get BBC RSS feeds."
-    
+
     if not matches:
         return "No matching BBC items found."
-    
+
     message = (
         "Adapter: RSS Feed\n"
         "Detected profile: BBC News\n"
