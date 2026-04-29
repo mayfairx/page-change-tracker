@@ -445,18 +445,6 @@ def track_hn_page(chat_id, url, interval, keywords):
 
     state[chat_id]["monitors"][url] = monitor_data
 
-    # Temporary compatibility for old background HN tracking.
-    # Later we will remove hn_tracks and make everything read from monitors.
-    if "hn_tracks" not in state[chat_id]:
-        state[chat_id]["hn_tracks"] = {}
-
-    state[chat_id]["hn_tracks"][url] = {
-        "interval": interval,
-        "last_check": 0,
-        "keywords": keywords,
-        "seen_links": seen_links.copy()
-    }
-
     write_state(state)
 
     return (
