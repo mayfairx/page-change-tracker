@@ -333,18 +333,32 @@ async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
         if not isinstance(user_data, dict):
             continue
 
-        hn_tracks = user_data.get("hn_tracks", {})
+        monitors = user_data.get("monitors", {})
 
-        for url, data in hn_tracks.items():
-            interval = data["interval"] * 60
-            last_check = data["last_check"]
+        if not isinstance(monitors, dict):
+            continue
+
+        for monitor_id, data in monitors.items():
+            if not isinstance(data, dict):
+                continue
+
+            if data.get("source") != "hacker_news":
+                continue
+
+            url = data.get("url")
+
+            if not url:
+                continue
+
+            interval = data.get("interval", 1) * 60
+            last_check = data.get("last_check", 0)
 
             if current_time - last_check < interval:
                 continue
 
-            matches = get_hn_matches(url, data["keywords"])
+            matches = get_hn_matches(url, data.get("keywords", []))
 
-            state[chat_id]["hn_tracks"][url]["last_check"] = current_time
+            state[chat_id]["monitors"][monitor_id]["last_check"] = current_time
 
             if matches is None:
                 continue
@@ -360,7 +374,9 @@ async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     chat_id=int(chat_id),
                     text=(
-                        "New HN topic:\n\n"
+                        "New monitor item:\n\n"
+                        "Source: Hacker News\n"
+                        "Adapter: Structured Link Feed\n\n"
                         f"{item['title']}\n"
                         f"Time: {item['age']}\n"
                         f"Keywords: {keywords_text}\n"
@@ -370,7 +386,7 @@ async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
 
                 seen_links.append(item["link"])
 
-            state[chat_id]["hn_tracks"][url]["seen_links"] = seen_links
+            state[chat_id]["monitors"][monitor_id]["seen_links"] = seen_links
 
     write_state(state)
 
