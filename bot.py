@@ -10,30 +10,33 @@ from page_checker import (
     write_state,
     set_keywords,
     show_keywords,
-    track_hn_page,
     get_hn_matches,
     check_source_preset,
     show_watchlist,
     normalize_keywords,
+    track_source_monitor,
 )
 
 load_dotenv()
+
+DEFAULT_MONITOR_INTERVAL = 1
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Page Change Tracker\n\n"
         "Keyword monitoring for structured sources.\n\n"
         "Available sources:\n"
-        "– bbc_all — RSS Feed / BBC News\n"
-        "– hacker_news — Structured Link Feed / Hacker News\n\n"
+        "– bbc — RSS Feed / BBC News\n"
+        "– hn — Structured Link Feed / Hacker News\n\n"
         "Check now:\n"
-        "/check_source bbc_all government police\n"
+        "/check_source bbc government police\n"
         "/check_source hn ai python\n\n"
         "Saved keywords:\n"
         "/set_keywords ai python bot\n"
         "/show_keywords\n\n"
         "Background monitoring:\n"
-        "/track_hn https://news.ycombinator.com/newest 1 ai python\n"
+        "/track hn ai python\n"
+        "/track hn\n"
         "/watchlist\n\n"
         "Use /help for details."
     )
@@ -44,21 +47,23 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Check sources:\n"
         "/check_source <source> <keywords>\n\n"
         "Sources:\n"
-        "– bbc_all / bbc — BBC News RSS feeds\n"
-        "– hacker_news / hn — Hacker News newest\n\n"
+        "– bbc — BBC News RSS feeds\n"
+        "– hn — Hacker News newest\n\n"
         "Keywords:\n"
         "/set_keywords <keywords>\n"
         "/show_keywords\n\n"
         "Monitoring:\n"
-        "/track_hn <url> <minutes> <keywords>\n"
+        "/track <source> <keywords>\n"
+        "/track <source>\n"
         "/watchlist\n\n"
         "Examples:\n"
-        "/check_source bbc_all trump police\n"
+        "/check_source bbc trump police\n"
         "/check_source hn ai python\n"
         "/set_keywords ai, python, bot\n"
-        "/track_hn https://news.ycombinator.com/newest 1 ai python"
+        "/track hn ai python\n"
+        "/track hn"
     )
-    
+
 async def set_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.effective_message.reply_text("Use: /set_keywords <keyword1> <keyword2>")
@@ -81,28 +86,22 @@ async def show_keywords_command(update: Update, context: ContextTypes.DEFAULT_TY
 
     await update.effective_message.reply_text(result)
 
-async def track_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) < 2:
+async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) < 1:
         await update.effective_message.reply_text(
-            "Use: /track_hn <url> <minutes> <keyword1> <keyword2>\n\n"
-            "Or save keywords first with /set_keywords and use:\n"
-            "/track_hn <url> <minutes>"
+            "Use:\n"
+            "/track <source> <keywords>\n"
+            "/track <source>\n\n"
+            "Examples:\n"
+            "/track hn ai python bot\n"
+            "/track hn"
         )
         return
-
-    url = context.args[0]
-    interval = context.args[1]
-
-    if not interval.isdigit():
-        await update.effective_message.reply_text(
-            "Interval must be a number. Example: /track_hn https://news.ycombinator.com/newest 1 ai python"
-        )
-        return
-
-    interval = int(interval)
+    
+    source_key = context.args[0]
     chat_id = str(update.effective_chat.id)
 
-    keywords = normalize_keywords(context.args[2:])
+    keywords = normalize_keywords(context.args[1:])
 
     if not keywords:
         state = read_state()
@@ -110,14 +109,22 @@ async def track_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if chat_id not in state or "keywords" not in state[chat_id]:
             await update.effective_message.reply_text(
                 "No keywords provided or saved.\n\n"
-                "Use: /track_hn <url> <minutes> <keyword1> <keyword2>\n"
-                "Or save keywords first with /set_keywords."
+                "Use:\n"
+                "/track hn ai python bot\n\n"
+                "Or save keywords first:\n"
+                "/set_keywords ai python bot\n"
+                "/track hn"
             )
             return
-
+        
         keywords = state[chat_id]["keywords"]
 
-    result = track_hn_page(chat_id, url, interval, keywords)
+    result = track_source_monitor(
+        chat_id,
+        source_key,
+        DEFAULT_MONITOR_INTERVAL,
+        keywords
+    )    
 
     await update.effective_message.reply_text(result)
 
@@ -227,7 +234,7 @@ app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CommandHandler("set_keywords", set_keywords_command))
 app.add_handler(CommandHandler("show_keywords", show_keywords_command))
-app.add_handler(CommandHandler("track_hn", track_hn))
+app.add_handler(CommandHandler("track", track))
 app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
 

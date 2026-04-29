@@ -1,5 +1,4 @@
 import requests
-import hashlib
 import json
 import re
 import feedparser
@@ -366,6 +365,27 @@ def check_source_preset(source_key, keywords):
         "hn\n"
         "bbc"
     )
+
+def track_source_monitor(chat_id, source_key, interval, keywords):
+    source_key = source_key.strip().lower()
+
+    if source_key in ["hn", "hacker_news"]:
+        return track_hn_page(chat_id, HACKER_NEWS_URL, interval, keywords)
+    
+    if source_key in ["bbc", "bbc_all"]:
+        return (
+            "BBC background monitoring is not available yet.\n\n"
+            "Use:\n"
+            "/check_source bbc <keywords>"
+        )
+    
+    return (
+        "Unknown source.\n\n"
+        "Available sources:\n"
+        "hn\n"
+        "bbc"
+    )
+
 
 def show_watchlist(chat_id):
     state = read_state()
