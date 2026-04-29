@@ -701,57 +701,40 @@ def show_watchlist(chat_id):
     message = "Watchlist\n\n"
     has_monitors = False
 
-    page_monitors = []
+    monitors = user_data.get("monitors", {})
 
-    for url, data in user_data.items():
-        if url in ["keywords", "hn_tracks"]:
-            continue
+    if isinstance(monitors, dict):
+        monitor_lines = []
 
-        if not isinstance(data, dict):
-            continue
-
-        if "hash" not in data:
-            continue
-
-        interval = data.get("interval", "?")
-
-        page_monitors.append(
-            f"– {url}\n"
-            f"  Every: {interval} min"
-        )
-
-    if page_monitors:
-        has_monitors = True
-        message += "Page monitors:\n"
-        message += "\n\n".join(page_monitors)
-        message += "\n\n"
-
-    hn_tracks = user_data.get("hn_tracks", {})
-    hn_monitors = []
-
-    if isinstance(hn_tracks, dict):
-        for url, data in hn_tracks.items():
+        for monitor_id, data in monitors.items():
             if not isinstance(data, dict):
                 continue
 
+            source = data.get("source", "unknown")
+            adapter = data.get("adapter", "unknown")
+            profile = data.get("profile", "Unknown")
+            url = data.get("url", monitor_id)
             interval = data.get("interval", "?")
             keywords = data.get("keywords", [])
             seen_links = data.get("seen_links", [])
 
             keywords_text = ", ".join(keywords)
 
-            hn_monitors.append(
-                f"– {url}\n"
+            monitor_lines.append(
+                f"– {profile}\n"
+                f"  Source: {source}\n"
+                f"  Adapter: {adapter}\n"
+                f"  URL: {url}\n"
                 f"  Every: {interval} min\n"
                 f"  Keywords: {keywords_text}\n"
                 f"  Seen links: {len(seen_links)}"
             )
 
-    if hn_monitors:
-        has_monitors = True
-        message += "Hacker News monitors:\n"
-        message += "\n\n".join(hn_monitors)
-        message += "\n\n"
+        if monitor_lines:
+            has_monitors = True
+            message += "Active monitors:\n"
+            message += "\n\n".join(monitor_lines)
+            message += "\n\n"
 
     if not has_monitors:
         message += "No active monitors.\n\n"
