@@ -10,16 +10,20 @@ The bot can check preset sources by keywords, save keyword lists, monitor Hacker
 - Supports Hacker News and BBC RSS feeds
 - Tracks Hacker News in the background
 - Sends Telegram alerts for new matching HN topics
-- Saves user keywords
+- Saves reusable keyword lists
 - Shows active monitors with `/watchlist`
 - Cleans keyword input automatically, so `ai, python, bot` becomes `ai`, `python`, `bot`
 - Stores active background monitors in a universal `monitors` state structure
 
 ## Demo
 
+Check Hacker News:
+
 ```text
 /check_source hn ai, python, bot
 ```
+
+Example response:
 
 ```text
 Adapter: Structured Link Feed
@@ -34,9 +38,13 @@ Keywords: ai
 https://...
 ```
 
+Start background monitoring:
+
 ```text
 /track_hn https://news.ycombinator.com/newest 1 ai, python, bot
 ```
+
+Example response:
 
 ```text
 Monitor enabled.
@@ -50,9 +58,13 @@ Keywords: ai, python, bot
 Current matching topics saved: 3
 ```
 
+Show active monitors:
+
 ```text
 /watchlist
 ```
+
+Example response:
 
 ```text
 Watchlist
@@ -74,10 +86,17 @@ ai, python, bot, problem, api, prompt, trump
 
 | Source | Key | Adapter | Status |
 |---|---|---|---|
-| Hacker News | `hacker_news` / `hn` | Structured Link Feed | Check + background tracking |
+| Hacker News | `hacker_news` / `hn` | Structured Link Feed | Check + background monitoring |
 | BBC News | `bbc_all` / `bbc` | RSS Feed | Check only |
 
 ## Main commands
+
+### Start / help
+
+```text
+/start
+/help
+```
 
 ### Check a source now
 
@@ -92,13 +111,11 @@ Examples:
 /check_source bbc_all government police trump
 ```
 
-You can also use commas:
+Comma-separated input also works:
 
 ```text
 /check_source hn ai, python, bot
 ```
-
-The bot normalizes keyword input automatically.
 
 ### Save keywords
 
@@ -144,6 +161,22 @@ or using saved keywords:
 ```text
 /watchlist
 ```
+
+## Current command interface
+
+Current user-facing commands:
+
+```text
+/start
+/help
+/check_source
+/set_keywords
+/show_keywords
+/track_hn
+/watchlist
+```
+
+Legacy development commands were removed from the Telegram interface to keep the bot focused on source monitoring.
 
 ## Current architecture
 
@@ -233,8 +266,6 @@ Example:
 }
 ```
 
-Older versions used a temporary `hn_tracks` structure. Current active monitor logic uses `monitors`.
-
 ## Source presets
 
 Source presets hide technical URLs from the user.
@@ -265,7 +296,7 @@ the user can write:
 
 ## Adapter idea
 
-The project is moving toward an adapter-based system.
+The project is moving toward an adapter-based monitoring system.
 
 Current adapters:
 
@@ -343,6 +374,7 @@ This is a working learning project that is evolving into a small Telegram monito
 Current stable features:
 
 - Telegram bot commands
+- Clean user-facing command interface
 - Hacker News parsing
 - BBC RSS parsing
 - Source presets
@@ -355,9 +387,9 @@ Current stable features:
 
 Known limitations:
 
-- BBC source currently supports manual checking, not background tracking
+- BBC source currently supports manual checking, not background monitoring
+- Background monitoring is currently implemented for Hacker News only
 - `/track_hn` is still HN-specific
-- Old development commands still exist in code
 - Storage currently uses `state.json`
 - No database yet
 - No Telegram button UI yet
@@ -368,6 +400,7 @@ Known limitations:
 Planned improvements:
 
 - Replace `/track_hn` with universal `/track`
+- Add `/track hn <minutes> <keywords>`
 - Add `/track bbc_all <minutes> <keywords>`
 - Add BBC background monitoring
 - Add universal `/untrack`

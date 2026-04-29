@@ -6,26 +6,12 @@ import os
 import time
 
 from page_checker import (
-    check_page_change,
-    show_tracked_pages, 
-    reset_tracked_pages, 
-    track_page,
     read_state,
     write_state,
-    get_page_content,
-    get_page_hash,
-    untrack_page,
-    get_listings,
-    check_new_listings,
-    check_keyword,
-    check_keywords,
     set_keywords,
     show_keywords,
-    check_saved_keywords,
-    check_hn_topics,
     track_hn_page,
     get_hn_matches,
-    check_rss_feed,
     check_source_preset,
     show_watchlist,
     normalize_keywords,
@@ -33,109 +19,23 @@ from page_checker import (
 
 load_dotenv()
 
-async def check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.effective_message.reply_text("Use: /check <url>")
-        return
-    
-    url = context.args[0]
-    result = check_page_change(url)
-
-    await update.effective_message.reply_text(result)
-
-async def show(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = str(update.effective_chat.id)
-    result = show_tracked_pages(chat_id)
-    await update.effective_message.reply_text(result)
-
-async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    result = reset_tracked_pages()
-    await update.effective_message.reply_text(result)
-
-async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) != 2:
-        await update.effective_message.reply_text("Use: /track <url> <minutes>")
-        return
-    
-    url = context.args[0]
-    interval = context.args[1]
-
-    if not interval.isdigit():
-        await update.effective_message.reply_text(
-            "Interval must be a number. Example: /track https://example.com 5"
-        )
-        return
-    
-    interval = int(interval)
-    
-    chat_id = str(update.effective_chat.id)
-    result = track_page(chat_id, url, interval)
-    
-    await update.effective_message.reply_text(result)
-
-async def untrack(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) != 1:
-        await update.effective_message.reply_text("Use: /untrack <url>")
-        return
-    
-    chat_id = str(update.effective_chat.id)
-    url = context.args[0]
-
-    result = untrack_page(chat_id, url)
-
-    await update.effective_message.reply_text(result)
-
-async def check_tracked_pages(context: ContextTypes.DEFAULT_TYPE):
-    state = read_state()
-    current_time = time.time()
-
-    for chat_id, pages in state.items():
-        for url, data in pages.items():
-            if "hash" not in data:
-                continue
-
-            interval = data["interval"] * 60
-            last_check = data["last_check"]
-
-            if current_time - last_check < interval:
-                continue
-
-            content = get_page_content(url)
-
-            state[chat_id][url]["last_check"] = current_time
-
-            if content is None:
-                continue
-
-            current_hash = get_page_hash(content)
-            last_hash = data["hash"]
-
-            if current_hash != last_hash:
-                state[chat_id][url]["hash"] = current_hash
-
-                await context.bot.send_message(
-                    chat_id=int(chat_id),
-                    text=f"Page changed\n\n{url}"
-                )
-
-        write_state(state)
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Page Change Tracker\n\n"
-        "Monitor sources by keywords and get relevant updates.\n\n"
+        "Keyword monitoring for structured sources.\n\n"
         "Available sources:\n"
-        "– bbc_all — BBC News feeds\n"
-        "– hacker_news — Hacker News newest\n\n"
-        "Quick check:\n"
+        "– bbc_all — RSS Feed / BBC News\n"
+        "– hacker_news — Structured Link Feed / Hacker News\n\n"
+        "Check now:\n"
         "/check_source bbc_all government police\n"
-        "/check_source hacker_news ai python\n\n"
+        "/check_source hn ai python\n\n"
         "Saved keywords:\n"
         "/set_keywords ai python bot\n"
         "/show_keywords\n\n"
-        "Tracking:\n"
-        "/track_hn https://news.ycombinator.com/newest 1 ai python\n\n"
-        "Use /help to see all main commands."
+        "Background monitoring:\n"
+        "/track_hn https://news.ycombinator.com/newest 1 ai python\n"
+        "/watchlist\n\n"
+        "Use /help for details."
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -144,85 +44,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Check sources:\n"
         "/check_source <source> <keywords>\n\n"
         "Sources:\n"
-        "– bbc_all / bbc\n"
-        "– hacker_news / hn\n\n"
+        "– bbc_all / bbc — BBC News RSS feeds\n"
+        "– hacker_news / hn — Hacker News newest\n\n"
         "Keywords:\n"
         "/set_keywords <keywords>\n"
         "/show_keywords\n\n"
-        "Tracking:\n"
+        "Monitoring:\n"
         "/track_hn <url> <minutes> <keywords>\n"
-        "/watchlist\n"
-        "/untrack <url>\n\n"
+        "/watchlist\n\n"
         "Examples:\n"
         "/check_source bbc_all trump police\n"
         "/check_source hn ai python\n"
-        "/set_keywords ai python bot\n"
-        "/track_hn https://news.ycombinator.com/newest 1"
+        "/set_keywords ai, python, bot\n"
+        "/track_hn https://news.ycombinator.com/newest 1 ai python"
     )
-
-async def listings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.effective_message.reply_text("Use: /listings <url>")
-        return
     
-    url = context.args[0]
-    items = get_listings(url)
-
-    if items is None:
-        await update.effective_message.reply_text("Could not get listings.")
-        return
-    
-    if not items:
-        await update.effective_message.reply_text("No listings found.")
-        return
-    
-    message = "Listings:\n\n"
-
-    for item in items[:5]:
-        message += (
-             f"{item['title']}\n"
-             f"{item['price']}\n"
-             f"{item['link']}\n\n"
-        )
-
-    await update.effective_message.reply_text(message)
-
-async def new_listings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.effective_message.reply_text("Use: /new_listings <url>")
-        return
-    
-    chat_id = str(update.effective_chat.id)
-    url = context.args[0]
-
-    result = check_new_listings(chat_id, url)
-
-    await update.effective_message.reply_text(result)
-
-async def check_keyword_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) != 2:
-        await update.effective_message.reply_text("Use: /check_keyword <url> <keyword>")
-        return
-    
-    url = context.args[0]
-    keyword = context.args[1]
-
-    result = check_keyword(url, keyword)
-
-    await update.effective_message.reply_text(result)
-
-async def check_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) < 2:
-        await update.effective_message.reply_text("Use: /check_keywords <url> <keyword1> <keyword2>")
-        return
-    
-    url = context.args[0]
-    keywords = context.args[1:]
-
-    result = check_keywords(url, keywords)
-
-    await update.effective_message.reply_text(result)
-
 async def set_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.effective_message.reply_text("Use: /set_keywords <keyword1> <keyword2>")
@@ -242,46 +78,6 @@ async def set_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYP
 async def show_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = str(update.effective_chat.id)
     result = show_keywords(chat_id)
-
-    await update.effective_message.reply_text(result)
-
-async def check_saved_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) != 1:
-        await update.effective_message.reply_text("Use: /check_saved_keywords <url>")
-        return
-    
-    chat_id = str(update.effective_chat.id)
-    url = context.args[0]
-
-    result = check_saved_keywords(chat_id, url)
-
-    await update.effective_message.reply_text(result)
-
-async def check_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) < 2:
-        await update.effective_message.reply_text("Use: /check_hn <url> <keyword1> <keyword2>")
-        return
-
-    url = context.args[0]
-    keywords = context.args[1:]
-
-    result = check_hn_topics(url, keywords)
-
-    await update.effective_message.reply_text(result)
-
-async def check_rss(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if len(context.args) < 2:
-        await update.effective_message.reply_text(
-            "Use: /check_rss <url> <keyword1> <keyword2>\n\n"
-            "Example:\n"
-            "/check_rss https://feeds.bbci.co.uk/news/uk/rss.xml london police"
-        )
-        return
-    
-    url = context.args[0]
-    keywords = context.args[1:]
-
-    result = check_rss_feed(url, keywords)
 
     await update.effective_message.reply_text(result)
 
@@ -427,27 +223,14 @@ if not TOKEN:
 
 app = Application.builder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("check", check))
-app.add_handler(CommandHandler("show", show))
-app.add_handler(CommandHandler("reset", reset))
-app.add_handler(CommandHandler("track", track))
-app.add_handler(CommandHandler("untrack", untrack))
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("help", help_command))
-app.add_handler(CommandHandler("listings", listings))
-app.add_handler(CommandHandler("new_listings", new_listings))
-app.add_handler(CommandHandler("check_keyword", check_keyword_command))
-app.add_handler(CommandHandler("check_keywords", check_keywords_command))
 app.add_handler(CommandHandler("set_keywords", set_keywords_command))
 app.add_handler(CommandHandler("show_keywords", show_keywords_command))
-app.add_handler(CommandHandler("check_saved_keywords", check_saved_keywords_command))
-app.add_handler(CommandHandler("check_hn", check_hn))
 app.add_handler(CommandHandler("track_hn", track_hn))
-app.add_handler(CommandHandler("check_rss", check_rss))
 app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
 
-app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
 app.job_queue.run_repeating(check_monitors, interval=30, first=10)
 
 app.run_polling(drop_pending_updates=True)
