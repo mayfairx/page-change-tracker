@@ -20,7 +20,15 @@ from page_checker import (
 
 load_dotenv()
 
+# =========================
+# Config
+# =========================
+
 DEFAULT_MONITOR_INTERVAL = 1
+
+# =========================
+# Basic commands
+# =========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
@@ -42,6 +50,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/watchlist\n\n"
         "Use /help for details."
     )
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Main commands\n\n"
@@ -67,6 +76,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/untrack hn"
     )
 
+# =========================
+# Keyword commands
+# =========================
+
 async def set_keywords_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.effective_message.reply_text("Use: /set_keywords <keyword1> <keyword2>")
@@ -88,6 +101,10 @@ async def show_keywords_command(update: Update, context: ContextTypes.DEFAULT_TY
     result = show_keywords(chat_id)
 
     await update.effective_message.reply_text(result)
+
+# =========================
+# Monitor commands
+# =========================
 
 async def track(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 1:
@@ -147,6 +164,10 @@ async def untrack(update: Update, context: ContextTypes.DEFAULT_TYPE):
     result = untrack_source_monitor(chat_id, source_key)
 
     await update.effective_message.reply_text(result)
+
+# =========================
+# Background jobs
+# =========================
 
 async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
     state = read_state()
@@ -213,6 +234,10 @@ async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
 
     write_state(state)
 
+# =========================
+# Source check commands
+# =========================
+
 async def check_source(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) < 2:
         await update.effective_message.reply_text(
@@ -244,11 +269,19 @@ async def watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(result)
 
+# =========================
+# App setup
+# =========================
+
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("BOT_TOKEN not found")
 
 app = Application.builder().token(TOKEN).build()
+
+# =========================
+# Handlers
+# =========================
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("help", help_command))
@@ -259,6 +292,14 @@ app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
 app.add_handler(CommandHandler("untrack", untrack))
 
+# =========================
+# Scheduled jobs
+# =========================
+
 app.job_queue.run_repeating(check_monitors, interval=30, first=10)
+
+# =========================
+# Run bot
+# =========================
 
 app.run_polling(drop_pending_updates=True)
