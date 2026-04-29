@@ -27,7 +27,7 @@ def read_state():
 
 def write_state(state):
     with open(STATE_FILE, "w", encoding="utf-8") as file:
-        json.dump(state, file)
+        json.dump(state, file, indent=2, ensure_ascii=False)
 
 # =========================
 # Page loading
