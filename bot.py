@@ -325,7 +325,7 @@ async def track_hn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.effective_message.reply_text(result)
 
-async def check_hn_tracks(context: ContextTypes.DEFAULT_TYPE):
+async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
     state = read_state()
     current_time = time.time()
 
@@ -448,6 +448,6 @@ app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
 
 app.job_queue.run_repeating(check_tracked_pages, interval=30, first=5)
-app.job_queue.run_repeating(check_hn_tracks, interval=30, first=10)
+app.job_queue.run_repeating(check_monitors, interval=30, first=10)
 
 app.run_polling(drop_pending_updates=True)
