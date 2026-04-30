@@ -38,6 +38,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_main_menu()
     )
 
+def get_interval_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("1 min", callback_data="interval_1"),
+            InlineKeyboardButton("5 min", callback_data="interval_5"),
+        ],
+        [
+            InlineKeyboardButton("15 min", callback_data="interval_15"),
+            InlineKeyboardButton("Custom", callback_data="interval_custom"),
+        ],
+        [
+            InlineKeyboardButton("Back", callback_data="menu_back")
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+def clear_pending_monitor(context):
+    context.user_data.pop("pending_action", None)
+    context.user_data.pop("pending_source", None)
+    context.user_data.pop("pending_keywords", None)
+    context.user_data.pop("pending_step", None)
+
 def get_main_menu():
     keyboard = [
         [
@@ -121,6 +144,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
 
     if data == "menu_back":
+        clear_pending_monitor(context)
+
         await query.edit_message_text(
             "Page Change Tracker\n\n"
             "Choose an action:",
@@ -141,9 +166,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Start monitoring\n\n"
             "Choose a source:",
             reply_markup=get_track_source_menu()
-            )
+        )
         return
-    
+
     if data == "track_source_hn":
         context.user_data["pending_action"] = "track"
         context.user_data["pending_source"] = "hn"
@@ -152,9 +177,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Hacker News monitoring\n\n"
             "Choose how to set keywords:",
             reply_markup=get_keyword_choice_menu()
-            )
+        )
         return
-    
+
     if data == "track_source_bbc":
         context.user_data["pending_action"] = "track"
         context.user_data["pending_source"] = "bbc"
@@ -163,7 +188,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "BBC News monitoring\n\n"
             "Choose how to set keywords:",
             reply_markup=get_keyword_choice_menu()
-            )
+        )
         return
 
     if data == "menu_watchlist":
@@ -185,7 +210,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_back_menu()
         )
         return
-    
+
     if data == "check_source_bbc":
         await query.edit_message_text(
             "BBC News\n\n"
@@ -194,9 +219,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Example:\n"
             "/check_source bbc trump, police, government",
             reply_markup=get_back_menu()
-            )
+        )
         return
-    
+
     if data == "check_source_hn":
         await query.edit_message_text(
             "Hacker News\n\n"
@@ -205,9 +230,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Example:\n"
             "/check_source hn ai, python, bot",
             reply_markup=get_back_menu()
-            )
+        )
         return
-    
+
     if data == "keywords_enter":
         pending_source = context.user_data.get("pending_source")
 
@@ -216,17 +241,19 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "No source selected.\n\n"
                 "Go back and choose a source first.",
                 reply_markup=get_back_menu()
-                )
+            )
             return
-        
+
+        context.user_data["pending_step"] = "keywords"
+
         await query.edit_message_text(
             "Send keywords for this monitor.\n\n"
             "Example:\n"
             "ai python bot",
             reply_markup=get_back_menu()
-            )
+        )
         return
-    
+
     if data == "keywords_saved":
         pending_source = context.user_data.get("pending_source")
         chat_id = str(update.effective_chat.id)
@@ -237,36 +264,80 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "No source selected.\n\n"
                 "Go back and choose a source first.",
                 reply_markup=get_back_menu()
-                )
+            )
             return
-        
+
         if chat_id not in state or "keywords" not in state[chat_id] or not state[chat_id]["keywords"]:
-            await query.edit_message.text(
+            await query.edit_message_text(
                 "No saved keywords found.\n\n"
                 "Use /set_keywords first or choose Enter keywords.",
                 reply_markup=get_back_menu()
-                )
+            )
             return
-        
+
         keywords = state[chat_id]["keywords"]
+
+        context.user_data["pending_keywords"] = keywords
+        context.user_data["pending_step"] = "interval"
+
+        await query.edit_message_text(
+            "Choose interval:",
+            reply_markup=get_interval_menu()
+        )
+        return
+
+    if data in ["interval_1", "interval_5", "interval_15"]:
+        pending_source = context.user_data.get("pending_source")
+        pending_keywords = context.user_data.get("pending_keywords")
+
+        if not pending_source or not pending_keywords:
+            await query.edit_message_text(
+                "Monitor setup is incomplete.\n\n"
+                "Go back and start again.",
+                reply_markup=get_back_menu()
+            )
+            return
+
+        interval = int(data.replace("interval_", ""))
+        chat_id = str(update.effective_chat.id)
 
         result = track_source_monitor(
             chat_id,
             pending_source,
-            DEFAULT_MONITOR_INTERVAL,
-            keywords
+            interval,
+            pending_keywords
         )
 
-        context.user_data.pop("pending_source", None)
-        context.user_data.pop("pending_action", None)
+        clear_pending_monitor(context)
 
         await query.edit_message_text(
             result,
             reply_markup=get_back_menu()
         )
         return
-    
-    
+
+    if data == "interval_custom":
+        pending_source = context.user_data.get("pending_source")
+        pending_keywords = context.user_data.get("pending_keywords")
+
+        if not pending_source or not pending_keywords:
+            await query.edit_message_text(
+                "Monitor setup is incomplete.\n\n"
+                "Go back and start again.",
+                reply_markup=get_back_menu()
+            )
+            return
+
+        context.user_data["pending_step"] = "custom_interval"
+
+        await query.edit_message_text(
+            "Send custom interval in minutes.\n\n"
+            "Example:\n"
+            "10",
+            reply_markup=get_back_menu()
+        )
+        return
+
 def get_keyword_choice_menu():
     keyboard = [
         [
@@ -283,28 +354,68 @@ def get_keyword_choice_menu():
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pending_action = context.user_data.get("pending_action")
     pending_source = context.user_data.get("pending_source")
+    pending_step = context.user_data.get("pending_step")
 
     if pending_action != "track" or not pending_source:
         return
-    
+
     chat_id = str(update.effective_chat.id)
-    keywords = normalize_keywords(update.effective_message.text.split())
 
-    if not keywords:
-        await update.effective_message.reply_text("No valid keywords provided.")
+    if pending_step == "keywords":
+        keywords = normalize_keywords(update.effective_message.text.split())
+
+        if not keywords:
+            await update.effective_message.reply_text("No valid keywords provided.")
+            return
+
+        context.user_data["pending_keywords"] = keywords
+        context.user_data["pending_step"] = "interval"
+
+        await update.effective_message.reply_text(
+            "Choose interval:",
+            reply_markup=get_interval_menu()
+        )
         return
-    
-    result = track_source_monitor(
-        chat_id,
-        pending_source,
-        DEFAULT_MONITOR_INTERVAL,
-        keywords
-    )
 
-    context.user_data.pop("pending_action", None)
-    context.user_data.pop("pending_source", None)
+    if pending_step == "custom_interval":
+        interval_text = update.effective_message.text.strip()
 
-    await update.effective_message.reply_text(result)
+        if not interval_text.isdigit():
+            await update.effective_message.reply_text(
+                "Interval must be a number.\n\n"
+                "Example:\n"
+                "10"
+            )
+            return
+
+        interval = int(interval_text)
+
+        if interval < 1:
+            await update.effective_message.reply_text(
+                "Interval must be at least 1 minute."
+            )
+            return
+
+        pending_keywords = context.user_data.get("pending_keywords")
+
+        if not pending_keywords:
+            await update.effective_message.reply_text(
+                "No keywords found. Start monitor setup again."
+            )
+            clear_pending_monitor(context)
+            return
+
+        result = track_source_monitor(
+            chat_id,
+            pending_source,
+            interval,
+            pending_keywords
+        )
+
+        clear_pending_monitor(context)
+
+        await update.effective_message.reply_text(result)
+        return
 
 # =========================
 # Keyword commands
