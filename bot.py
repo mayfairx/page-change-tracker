@@ -150,10 +150,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "Hacker News monitoring\n\n"
-            "Send keywords for this monitor.\n\n"
-            "Example:\n"
-            "ai python bot",
-            reply_markup=get_back_menu()
+            "Choose how to set keywords:",
+            reply_markup=get_keyword_choice_menu()
             )
         return
     
@@ -163,10 +161,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             "BBC News monitoring\n\n"
-            "Send keywords for this monitor.\n\n"
-            "Example:\n"
-            "trump police government",
-            reply_markup=get_back_menu()
+            "Choose how to set keywords:",
+            reply_markup=get_keyword_choice_menu()
             )
         return
 
@@ -212,6 +208,78 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
     
+    if data == "keywords_enter":
+        pending_source = context.user_data.get("pending_source")
+
+        if not pending_source:
+            await query.edit_message_text(
+                "No source selected.\n\n"
+                "Go back and choose a source first.",
+                reply_markup=get_back_menu()
+                )
+            return
+        
+        await query.edit_message_text(
+            "Send keywords for this monitor.\n\n"
+            "Example:\n"
+            "ai python bot",
+            reply_markup=get_back_menu()
+            )
+        return
+    
+    if data == "keywords_saved":
+        pending_source = context.user_data.get("pending_source")
+        chat_id = str(update.effective_chat.id)
+        state = read_state()
+
+        if not pending_source:
+            await query.edit_message_text(
+                "No source selected.\n\n"
+                "Go back and choose a source first.",
+                reply_markup=get_back_menu()
+                )
+            return
+        
+        if chat_id not in state or "keywords" not in state[chat_id] or not state[chat_id]["keywords"]:
+            await query.edit_message.text(
+                "No saved keywords found.\n\n"
+                "Use /set_keywords first or choose Enter keywords.",
+                reply_markup=get_back_menu()
+                )
+            return
+        
+        keywords = state[chat_id]["keywords"]
+
+        result = track_source_monitor(
+            chat_id,
+            pending_source,
+            DEFAULT_MONITOR_INTERVAL,
+            keywords
+        )
+
+        context.user_data.pop("pending_source", None)
+        context.user_data.pop("pending_action", None)
+
+        await query.edit_message_text(
+            result,
+            reply_markup=get_back_menu()
+        )
+        return
+    
+    
+def get_keyword_choice_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Enter keywords", callback_data="keywords_enter"),
+            InlineKeyboardButton("Use saved keywords", callback_data="keywords_saved"),
+        ],
+        [
+            InlineKeyboardButton("Back", callback_data="menu_back")
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pending_action = context.user_data.get("pending_action")
     pending_source = context.user_data.get("pending_source")
