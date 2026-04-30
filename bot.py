@@ -448,13 +448,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         context.user_data["pending_interval"] = interval
-        context.user_data["pending_step"] = "confirm"
+    context.user_data["pending_step"] = "confirm"
 
-        await update.effective_message.reply_text(
-            get_monitor_confirmation_text(context),
-            reply_markup=get_confirm_monitor_menu(),
-        )
-        return
+    await update.effective_message.reply_text(
+        get_monitor_confirmation_text(context),
+        reply_markup=get_confirm_monitor_menu(),
+    )
+    return
 
 
 # =========================
