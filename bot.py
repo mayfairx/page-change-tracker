@@ -74,6 +74,19 @@ def get_check_source_menu():
 
     return InlineKeyboardMarkup(keyboard)
 
+def get_track_source_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Hacker News", callback_data="track_source_hn"),
+            InlineKeyboardButton("BBC News", callback_data="track_source_bbc"),
+        ],
+        [
+            InlineKeyboardButton("Back", callback_data="menu_back")
+        ]
+    ]
+    
+    return InlineKeyboardMarkup(keyboard)
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Main commands\n\n"
@@ -97,7 +110,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/track hn ai python\n"
         "/track bbc trump police\n"
         "/track hn\n"
-        "/untrack hn"
+        "/untrack hn\n"
         "/untrack bbc"
     )
 
@@ -126,14 +139,33 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu_track":
         await query.edit_message_text(
             "Start monitoring\n\n"
+            "Choose a source:",
+            reply_markup=get_track_source_menu()
+            )
+        return
+    
+    if data == "track_source_hn":
+        await query.edit_message_text(
+            "Hacker News monitoring\n\n"
             "Use keywords directly:\n"
-            "/track hn ai python\n"
-            "/track bbc trump police\n\n"
+            "/track hn ai python\n\n"
             "Or use saved keywords:\n"
             "/set_keywords ai python bot\n"
             "/track hn",
             reply_markup=get_back_menu()
-        )
+            )
+        return
+    
+    if data == "track_source_bbc":
+        await query.edit_message_text(
+            "BBC News monitoring\n\n"
+            "Use keywords directly:\n"
+            "/track bbc trump police\n\n"
+            "Or use saved keywords:\n"
+            "/set_keywords trump police government\n"
+            "/track bbc",
+            reply_markup=get_back_menu()
+            )
         return
 
     if data == "menu_watchlist":
@@ -178,6 +210,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
     
+
 
 # =========================
 # Keyword commands
