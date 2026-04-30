@@ -248,6 +248,50 @@ def get_rss_items(url):
 
     return items
 
+def track_bbc_all_monitor(chat_id, interval, keywords):
+    matches = get_bbc_all_matches(keywords)
+
+    if matches is None:
+        return "Could not get BBC RSS feed."
+    
+    state = read_state()
+
+    if chat_id not in state:
+        state[chat_id] = {}
+
+    seen_links = []
+
+    for item in matches:
+        seen_links.append(item["link"])
+
+    monitor_data = {
+        "source": "bbc_all",
+        "adapter": "rss_feed",
+        "profile": "BBC News",
+        "url": "bbc_all",
+        "interval": interval,
+        "last_check": 0,
+        "keywords": keywords,
+        "seen_links": seen_links
+    }
+
+    if "monitors" not in state[chat_id]:
+        state[chat_id]["monitors"] = {}
+
+    state[chat_id]["monitors"]["bbc_all"] = monitor_data
+
+    write_state(state)
+
+    return (
+        "Monitor enabled.\n\n"
+        "Source: BBC News\n"
+        "Adapter: RSS Feed\n"
+        "Profile: BBC News\n"
+        f"Interval: {interval} min\n"
+        f"Keywords: {', '.join(keywords)}\n"
+        f"Current matching items saved: {len(seen_links)}"
+    )
+
 # =========================
 # Source configuration
 # =========================
@@ -429,11 +473,7 @@ def track_source_monitor(chat_id, source_key, interval, keywords):
         return track_hn_page(chat_id, HACKER_NEWS_URL, interval, keywords)
     
     if source_key in ["bbc", "bbc_all"]:
-        return (
-            "BBC background monitoring is not available yet.\n\n"
-            "Use:\n"
-            "/check_source bbc <keywords>"
-        )
+        return track_bbc_all_monitor(chat_id, interval, keywords)
     
     return (
         "Unknown source.\n\n"

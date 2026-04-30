@@ -15,7 +15,8 @@ from page_checker import (
     show_watchlist,
     normalize_keywords,
     track_source_monitor,
-    untrack_source_monitor
+    untrack_source_monitor,
+    get_bbc_all_matches,
 )
 
 load_dotenv()
@@ -45,8 +46,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/show_keywords\n\n"
         "Background monitoring:\n"
         "/track hn ai python\n"
+        "/track bbc trump police"
         "/track hn\n"
         "/untrack hn\n"
+        "/untrack bbc"
         "/watchlist\n\n"
         "Use /help for details."
     )
@@ -72,8 +75,10 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/check_source hn ai python\n"
         "/set_keywords ai, python, bot\n"
         "/track hn ai python\n"
+        "/track bbc trump police\n"
         "/track hn\n"
         "/untrack hn"
+        "/untrack bbc"
     )
 
 # =========================
@@ -186,13 +191,8 @@ async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
             if not isinstance(data, dict):
                 continue
 
-            if data.get("source") != "hacker_news":
-                continue
-
-            url = data.get("url")
-
-            if not url:
-                continue
+            source_type = data.get("source")
+            keywords = data.get("keywords", [])
 
             interval = data.get("interval", 1) * 60
             last_check = data.get("last_check", 0)
@@ -200,37 +200,75 @@ async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
             if current_time - last_check < interval:
                 continue
 
-            matches = get_hn_matches(url, data.get("keywords", []))
-
             state[chat_id]["monitors"][monitor_id]["last_check"] = current_time
 
-            if matches is None:
-                continue
+            if source_type == "hacker_news":
+                url = data.get("url")
 
-            seen_links = data.get("seen_links", [])
-
-            for item in matches:
-                if item["link"] in seen_links:
+                if not url:
                     continue
 
-                keywords_text = ", ".join(item["keywords"])
+                matches = get_hn_matches(url, keywords)
 
-                await context.bot.send_message(
-                    chat_id=int(chat_id),
-                    text=(
-                        "New monitor item:\n\n"
-                        "Source: Hacker News\n"
-                        "Adapter: Structured Link Feed\n\n"
-                        f"{item['title']}\n"
-                        f"Time: {item['age']}\n"
-                        f"Keywords: {keywords_text}\n"
-                        f"{item['link']}"
+                if matches is None:
+                    continue
+
+                seen_links = data.get("seen_links", [])
+
+                for item in matches:
+                    if item["link"] in seen_links:
+                        continue
+
+                    keywords_text = ", ".join(item["keywords"])
+
+                    await context.bot.send_message(
+                        chat_id=int(chat_id),
+                        text=(
+                            "New monitor item:\n\n"
+                            "Source: Hacker News\n"
+                            "Adapter: Structured Link Feed\n\n"
+                            f"{item['title']}\n"
+                            f"Time: {item['age']}\n"
+                            f"Keywords: {keywords_text}\n"
+                            f"{item['link']}"
+                        )
                     )
-                )
 
-                seen_links.append(item["link"])
+                    seen_links.append(item["link"])
 
-            state[chat_id]["monitors"][monitor_id]["seen_links"] = seen_links
+                state[chat_id]["monitors"][monitor_id]["seen_links"] = seen_links
+
+            elif source_type == "bbc_all":
+                matches = get_bbc_all_matches(keywords)
+
+                if matches is None:
+                    continue
+
+                seen_links = data.get("seen_links", [])
+
+                for item in matches:
+                    if item["link"] in seen_links:
+                        continue
+
+                    keywords_text = ", ".join(item["keywords"])
+
+                    await context.bot.send_message(
+                        chat_id=int(chat_id),
+                        text=(
+                            "New monitor item:\n\n"
+                            "Source: BBC News\n"
+                            "Adapter: RSS Feed\n\n"
+                            f"{item['title']}\n"
+                            f"Feed: {item['source']}\n"
+                            f"Published: {item['published']}\n"
+                            f"Keywords: {keywords_text}\n"
+                            f"{item['link']}"
+                        )
+                    )
+
+                    seen_links.append(item["link"])
+
+                state[chat_id]["monitors"][monitor_id]["seen_links"] = seen_links
 
     write_state(state)
 
