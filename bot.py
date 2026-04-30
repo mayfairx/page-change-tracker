@@ -163,20 +163,20 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/check_source bbc trump police\n\n"
             "Example:\n"
             "/check_source bbc trump, police, government",
-            reply_markup=get_check_source_menu()
+            reply_markup=get_back_menu()
             )
         return
     
     if data == "check_source_hn":
         await query.edit_message_text(
-        "Hacker News\n\n"
-        "Send keywords with:\n"
-        "/check_source hn ai python\n\n"
-        "Example:\n"
-        "/check_source hn ai, python, bot",
-        reply_markup=get_check_source_menu()
-        )
-    return
+            "Hacker News\n\n"
+            "Send keywords with:\n"
+            "/check_source hn ai python\n\n"
+            "Example:\n"
+            "/check_source hn ai, python, bot",
+            reply_markup=get_back_menu()
+            )
+        return
     
 
 # =========================
