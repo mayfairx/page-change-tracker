@@ -1,5 +1,5 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler
 from dotenv import load_dotenv
 
 import os
@@ -34,25 +34,32 @@ DEFAULT_MONITOR_INTERVAL = 1
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Page Change Tracker\n\n"
-        "Keyword monitoring for structured sources.\n\n"
-        "Available sources:\n"
-        "– bbc — RSS Feed / BBC News\n"
-        "– hn — Structured Link Feed / Hacker News\n\n"
-        "Check now:\n"
-        "/check_source bbc government police\n"
-        "/check_source hn ai python\n\n"
-        "Saved keywords:\n"
-        "/set_keywords ai python bot\n"
-        "/show_keywords\n\n"
-        "Background monitoring:\n"
-        "/track hn ai python\n"
-        "/track bbc trump police"
-        "/track hn\n"
-        "/untrack hn\n"
-        "/untrack bbc"
-        "/watchlist\n\n"
-        "Use /help for details."
+        "Choose an action:",
+        reply_markup=get_main_menu()
     )
+
+def get_main_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Check now", callback_data="menu_check"),
+            InlineKeyboardButton("Start monitoring", callback_data="menu_track"),
+        ],
+        [
+            InlineKeyboardButton("Watchlist", callback_data="menu_watchlist"),
+            InlineKeyboardButton("Saved keywords", callback_data="menu_keywords"),
+        ],
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+def get_back_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Back", callback_data="menu_back")
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
@@ -80,6 +87,63 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/untrack hn"
         "/untrack bbc"
     )
+
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    data = query.data
+
+    if data == "menu_back":
+        await query.edit_message_text(
+            "Page Change Tracker\n\n"
+            "Choose an action:",
+            reply_markup=get_main_menu()
+        )
+        return
+
+    if data == "menu_check":
+        await query.edit_message_text(
+            "Check now\n\n"
+            "Use:\n"
+            "/check_source hn ai python\n"
+            "/check_source bbc trump police",
+            reply_markup=get_back_menu()
+        )
+        return
+
+    if data == "menu_track":
+        await query.edit_message_text(
+            "Start monitoring\n\n"
+            "Use keywords directly:\n"
+            "/track hn ai python\n"
+            "/track bbc trump police\n\n"
+            "Or use saved keywords:\n"
+            "/set_keywords ai python bot\n"
+            "/track hn",
+            reply_markup=get_back_menu()
+        )
+        return
+
+    if data == "menu_watchlist":
+        chat_id = str(update.effective_chat.id)
+        result = show_watchlist(chat_id)
+
+        await query.edit_message_text(
+            result,
+            reply_markup=get_back_menu()
+        )
+        return
+
+    if data == "menu_keywords":
+        chat_id = str(update.effective_chat.id)
+        result = show_keywords(chat_id)
+
+        await query.edit_message_text(
+            result,
+            reply_markup=get_back_menu()
+        )
+        return
 
 # =========================
 # Keyword commands
@@ -330,6 +394,7 @@ app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
 app.add_handler(CommandHandler("untrack", untrack))
 
+app.add_handler(CallbackQueryHandler(handle_button))
 # =========================
 # Scheduled jobs
 # =========================
