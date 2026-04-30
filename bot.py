@@ -67,6 +67,7 @@ def clear_pending_monitor(context):
     context.user_data.pop("pending_keywords", None)
     context.user_data.pop("pending_interval", None)
     context.user_data.pop("pending_step", None)
+    context.user_data.pop("pending_untrack_source", None)
 
 
 def get_confirm_monitor_menu():
@@ -122,6 +123,70 @@ def get_back_menu():
     keyboard = [[InlineKeyboardButton("Back", callback_data="menu_back")]]
 
     return InlineKeyboardMarkup(keyboard)
+
+
+def get_watchlist_menu(chat_id):
+    state = read_state()
+    user_data = state.get(chat_id, {})
+    monitors = user_data.get("monitors", {}) if isinstance(user_data, dict) else {}
+
+    has_hn = False
+    has_bbc = False
+
+    if isinstance(monitors, dict):
+        for data in monitors.values():
+            if not isinstance(data, dict):
+                continue
+
+            if data.get("source") == "hacker_news":
+                has_hn = True
+
+            if data.get("source") == "bbc_all":
+                has_bbc = True
+
+    keyboard = []
+    stop_buttons = []
+
+    if has_hn:
+        stop_buttons.append(
+            InlineKeyboardButton("Stop Hacker News", callback_data="untrack_source_hn")
+        )
+
+    if has_bbc:
+        stop_buttons.append(
+            InlineKeyboardButton("Stop BBC News", callback_data="untrack_source_bbc")
+        )
+
+    if stop_buttons:
+        keyboard.append(stop_buttons)
+
+    keyboard.append([InlineKeyboardButton("Back", callback_data="menu_back")])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_confirm_untrack_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Stop", callback_data="untrack_confirm_stop"),
+            InlineKeyboardButton("Cancel", callback_data="untrack_confirm_cancel"),
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_untrack_confirmation_text(context):
+    source = context.user_data.get("pending_untrack_source", "unknown")
+
+    if source == "hn":
+        source_name = "Hacker News"
+    elif source == "bbc":
+        source_name = "BBC News"
+    else:
+        source_name = source
+
+    return "Confirm stop\n\n" f"Source: {source_name}\n\n" "Stop this monitor?"
 
 
 def get_check_source_menu():
@@ -190,6 +255,35 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    if data == "untrack_confirm_stop":
+        source_key = context.user_data.get("pending_untrack_source")
+        if not source_key:
+            await query.edit_message_text(
+                "No source selected.\n\n" "Go back and try again.",
+                reply_markup=get_back_menu(),
+            )
+            return
+
+        chat_id = str(update.effective_chat.id)
+        result = untrack_source_monitor(chat_id, source_key)
+
+        context.user_data.pop("pending_untrack_source", None)
+
+        updated_watchlist = show_watchlist(chat_id)
+
+        await query.edit_message_text(
+            f"{result}\n\n{updated_watchlist}", reply_markup=get_watchlist_menu(chat_id)
+        )
+        return
+
+    if data == "untrack_confirm_cancel":
+        context.user_data.pop("pending_untrack_source", None)
+
+        chat_id = str(update.effective_chat.id)
+        result = show_watchlist(chat_id)
+
+        await query.edit_message_text(result, reply_markup=get_watchlist_menu(chat_id))
+
     if data == "menu_check":
         await query.edit_message_text(
             "Check now\n\n" "Choose a source:", reply_markup=get_check_source_menu()
@@ -227,7 +321,25 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = str(update.effective_chat.id)
         result = show_watchlist(chat_id)
 
-        await query.edit_message_text(result, reply_markup=get_back_menu())
+        await query.edit_message_text(result, reply_markup=get_watchlist_menu(chat_id))
+        return
+
+    if data == "untrack_source_hn":
+        context.user_data["pending_untrack_source"] = "hn"
+
+        await query.edit_message_text(
+            get_untrack_confirmation_text(context),
+            reply_markup=get_confirm_untrack_menu(),
+        )
+        return
+
+    if data == "untrack_source_bbc":
+        context.user_data["pending_untrack_source"] = "bbc"
+
+        await query.edit_message_text(
+            get_untrack_confirmation_text(context),
+            reply_markup=get_confirm_untrack_menu(),
+        )
         return
 
     if data == "menu_keywords":
