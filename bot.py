@@ -559,7 +559,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             clear_pending_monitor(context)
             return
 
-        context.user_data["pending_interval"] = interval
+    context.user_data["pending_interval"] = interval
     context.user_data["pending_step"] = "confirm"
 
     await update.effective_message.reply_text(
