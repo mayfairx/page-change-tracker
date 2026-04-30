@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackQueryHandler, MessageHandler, filters
 from dotenv import load_dotenv
 
 import os
@@ -145,25 +145,27 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if data == "track_source_hn":
+        context.user_data["pending_action"] = "track"
+        context.user_data["pending_source"] = "hn"
+
         await query.edit_message_text(
             "Hacker News monitoring\n\n"
-            "Use keywords directly:\n"
-            "/track hn ai python\n\n"
-            "Or use saved keywords:\n"
-            "/set_keywords ai python bot\n"
-            "/track hn",
+            "Send keywords for this monitor.\n\n"
+            "Example:\n"
+            "ai python bot",
             reply_markup=get_back_menu()
             )
         return
     
     if data == "track_source_bbc":
+        context.user_data["pending_action"] = "track"
+        context.user_data["pending_source"] = "bbc"
+
         await query.edit_message_text(
             "BBC News monitoring\n\n"
-            "Use keywords directly:\n"
-            "/track bbc trump police\n\n"
-            "Or use saved keywords:\n"
-            "/set_keywords trump police government\n"
-            "/track bbc",
+            "Send keywords for this monitor.\n\n"
+            "Example:\n"
+            "trump police government",
             reply_markup=get_back_menu()
             )
         return
@@ -210,7 +212,31 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
     
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pending_action = context.user_data.get("pending_action")
+    pending_source = context.user_data.get("pending_source")
 
+    if pending_action != "track" or not pending_source:
+        return
+    
+    chat_id = str(update.effective_chat.id)
+    keywords = normalize_keywords(update.effective_message.text.split())
+
+    if not keywords:
+        await update.effective_message.reply_text("No valid keywords provided.")
+        return
+    
+    result = track_source_monitor(
+        chat_id,
+        pending_source,
+        DEFAULT_MONITOR_INTERVAL,
+        keywords
+    )
+
+    context.user_data.pop("pending_action", None)
+    context.user_data.pop("pending_source", None)
+
+    await update.effective_message.reply_text(result)
 
 # =========================
 # Keyword commands
@@ -461,6 +487,7 @@ app.add_handler(CommandHandler("check_source", check_source))
 app.add_handler(CommandHandler("watchlist", watchlist))
 app.add_handler(CommandHandler("untrack", untrack))
 
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 app.add_handler(CallbackQueryHandler(handle_button))
 # =========================
 # Scheduled jobs
