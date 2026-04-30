@@ -61,6 +61,19 @@ def get_back_menu():
 
     return InlineKeyboardMarkup(keyboard)
 
+def get_check_source_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Hacker News", callback_data="check_source_hn"),
+            InlineKeyboardButton("BBC News", callback_data="check_source_bbc"),
+        ],
+        [
+            InlineKeyboardButton("Back", callback_data="menu_back")
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         "Main commands\n\n"
@@ -105,10 +118,8 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "menu_check":
         await query.edit_message_text(
             "Check now\n\n"
-            "Use:\n"
-            "/check_source hn ai python\n"
-            "/check_source bbc trump police",
-            reply_markup=get_back_menu()
+            "Choose a source:",
+            reply_markup=get_check_source_menu()
         )
         return
 
@@ -144,6 +155,29 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_back_menu()
         )
         return
+    
+    if data == "check_source_bbc":
+        await query.edit_message_text(
+            "BBC News\n\n"
+            "Send keywords with:\n"
+            "/check_source bbc trump police\n\n"
+            "Example:\n"
+            "/check_source bbc trump, police, government",
+            reply_markup=get_check_source_menu()
+            )
+        return
+    
+    if data == "check_source_hn":
+        await query.edit_message_text(
+        "Hacker News\n\n"
+        "Send keywords with:\n"
+        "/check_source hn ai python\n\n"
+        "Example:\n"
+        "/check_source hn ai, python, bot",
+        reply_markup=get_check_source_menu()
+        )
+    return
+    
 
 # =========================
 # Keyword commands
