@@ -283,6 +283,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         result = show_watchlist(chat_id)
 
         await query.edit_message_text(result, reply_markup=get_watchlist_menu(chat_id))
+        return
 
     if data == "menu_check":
         await query.edit_message_text(
@@ -350,24 +351,22 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "check_source_bbc":
+        context.user_data["pending_action"] = "check"
+        context.user_data["pending_source"] = "bbc"
+
         await query.edit_message_text(
-            "BBC News\n\n"
-            "Send keywords with:\n"
-            "/check_source bbc trump police\n\n"
-            "Example:\n"
-            "/check_source bbc trump, police, government",
-            reply_markup=get_back_menu(),
+            "BBC News check\n\n" "Choose how to set keywords:",
+            reply_markup=get_keyword_choice_menu(),
         )
         return
 
     if data == "check_source_hn":
+        context.user_data["pending_action"] = "check"
+        context.user_data["pending_source"] = "hn"
+
         await query.edit_message_text(
-            "Hacker News\n\n"
-            "Send keywords with:\n"
-            "/check_source hn ai python\n\n"
-            "Example:\n"
-            "/check_source hn ai, python, bot",
-            reply_markup=get_back_menu(),
+            "Hacker News check\n\n" "Choose how to set keywords:",
+            reply_markup=get_keyword_choice_menu(),
         )
         return
 
@@ -384,7 +383,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pending_step"] = "keywords"
 
         await query.edit_message_text(
-            "Send keywords for this monitor.\n\n" "Example:\n" "ai python bot",
+            "Send keywords.\n\n" "Example:\n" "ai python bot",
             reply_markup=get_back_menu(),
         )
         return
@@ -414,6 +413,15 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         keywords = state[chat_id]["keywords"]
+        pending_action = context.user_data.get("pending_action")
+
+        if pending_action == "check":
+            result = check_source_preset(pending_source, keywords)
+
+            clear_pending_monitor(context)
+
+            await query.edit_message_text(result, reply_markup=get_back_menu())
+            return
 
         context.user_data["pending_keywords"] = keywords
         context.user_data["pending_step"] = "interval"
@@ -513,7 +521,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pending_source = context.user_data.get("pending_source")
     pending_step = context.user_data.get("pending_step")
 
-    if pending_action != "track" or not pending_source:
+    if pending_action not in ["track", "check"] or not pending_source:
         return
 
     chat_id = str(update.effective_chat.id)
@@ -523,6 +531,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if not keywords:
             await update.effective_message.reply_text("No valid keywords provided.")
+            return
+
+        if pending_action == "check":
+            result = check_source_preset(pending_source, keywords)
+
+            clear_pending_monitor(context)
+
+            await update.effective_message.reply_text(
+                result, reply_markup=get_back_menu()
+            )
             return
 
         context.user_data["pending_keywords"] = keywords
@@ -559,14 +577,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             clear_pending_monitor(context)
             return
 
-    context.user_data["pending_interval"] = interval
-    context.user_data["pending_step"] = "confirm"
+        context.user_data["pending_interval"] = interval
+        context.user_data["pending_step"] = "confirm"
 
-    await update.effective_message.reply_text(
-        get_monitor_confirmation_text(context),
-        reply_markup=get_confirm_monitor_menu(),
-    )
-    return
+        await update.effective_message.reply_text(
+            get_monitor_confirmation_text(context),
+            reply_markup=get_confirm_monitor_menu(),
+        )
+        return
 
 
 # =========================
