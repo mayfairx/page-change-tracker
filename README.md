@@ -2,14 +2,15 @@
 
 Telegram keyword monitoring bot for structured sources like Hacker News and BBC RSS feeds.
 
-The bot can check preset sources by keywords, save keyword lists, monitor Hacker News in the background, show active monitors, and disable monitors from Telegram.
+The bot can check preset sources by keywords, save keyword lists, monitor Hacker News and BBC News in the background, show active monitors, and disable monitors from Telegram.
 
 ## What it does
 
 - Checks preset sources by keywords
 - Supports Hacker News and BBC RSS feeds
 - Tracks Hacker News in the background
-- Sends Telegram alerts for new matching Hacker News topics
+- Tracks BBC News RSS feeds in the background
+- Sends Telegram alerts for new matching monitor items
 - Saves reusable keyword lists
 - Shows active monitors with `/watchlist`
 - Disables active monitors with `/untrack`
@@ -39,7 +40,29 @@ Keywords: ai
 https://...
 ```
 
-### Start background monitoring
+### Check BBC News
+
+```text
+/check_source bbc trump police government
+```
+
+Example response:
+
+```text
+Adapter: RSS Feed
+Detected profile: BBC News
+Source: BBC All
+
+Matching items:
+
+Example BBC article title
+Feed: BBC Top Stories
+Published: Tue, 28 Apr 2026 18:48:48 GMT
+Keywords: government
+https://...
+```
+
+### Start Hacker News monitoring
 
 ```text
 /track hn ai, python, bot
@@ -57,6 +80,25 @@ URL: https://news.ycombinator.com/newest
 Interval: 1 min
 Keywords: ai, python, bot
 Current matching topics saved: 4
+```
+
+### Start BBC monitoring
+
+```text
+/track bbc trump police government
+```
+
+Example response:
+
+```text
+Monitor enabled.
+
+Source: BBC News
+Adapter: RSS Feed
+Profile: BBC News
+Interval: 1 min
+Keywords: trump, police, government
+Current matching items saved: 26
 ```
 
 ### Use saved keywords
@@ -92,13 +134,21 @@ Example response:
 Watchlist
 
 Active monitors:
+– BBC News
+  Source: bbc_all
+  Adapter: rss_feed
+  URL: bbc_all
+  Every: 1 min
+  Keywords: trump, police, government
+  Seen links: 26
+
 – Hacker News
   Source: hacker_news
   Adapter: structured_link_feed
   URL: https://news.ycombinator.com/newest
   Every: 1 min
   Keywords: ai, python, bot
-  Seen links: 2
+  Seen links: 8
 
 Saved keywords:
 ai, python, api, prompt
@@ -110,30 +160,19 @@ ai, python, api, prompt
 /untrack hn
 ```
 
+or:
+
+```text
+/untrack bbc
+```
+
 Example response:
 
 ```text
 Monitor disabled.
 
-Source: Hacker News
+Source: BBC News
 Removed monitors: 1
-```
-
-After that:
-
-```text
-/watchlist
-```
-
-Example response:
-
-```text
-Watchlist
-
-No active monitors.
-
-Saved keywords:
-ai, python, api, prompt
 ```
 
 ## Supported sources
@@ -141,7 +180,7 @@ ai, python, api, prompt
 | Source | Key | Adapter | Status |
 |---|---|---|---|
 | Hacker News | `hn` | Structured Link Feed | Check + background monitoring |
-| BBC News | `bbc` | RSS Feed | Check only |
+| BBC News | `bbc` | RSS Feed | Check + background monitoring |
 
 ## Main commands
 
@@ -197,12 +236,14 @@ Use keywords directly:
 
 ```text
 /track hn ai python bot
+/track bbc trump police government
 ```
 
 or with commas:
 
 ```text
 /track hn ai, python, bot
+/track bbc trump, police, government
 ```
 
 or use saved keywords:
@@ -239,8 +280,6 @@ Examples:
 /untrack bbc
 ```
 
-`/untrack bbc` is already supported as a command path, but BBC background monitoring is not available yet.
-
 ## Current command interface
 
 Current user-facing commands:
@@ -272,7 +311,7 @@ Handles Telegram commands, user input, and scheduled background jobs.
 page_checker.py
 ```
 
-Handles page loading, keyword logic, RSS parsing, Hacker News parsing, source presets, monitor creation, monitor removal, state handling, and watchlist output.
+Handles page loading, keyword logic, RSS parsing, Hacker News parsing, BBC matching, source presets, monitor creation, monitor removal, state handling, and watchlist output.
 
 ```text
 state.json
@@ -286,6 +325,7 @@ Stores saved keywords, active monitors, seen links, intervals, and last check ti
 
 ```text
 /check_source hn ai python
+/check_source bbc trump police
 ```
 
 Flow:
@@ -301,10 +341,11 @@ Telegram command
 
 Manual checks do not create monitors and do not save tracking data.
 
-### Hacker News background monitoring
+### Background monitoring
 
 ```text
 /track hn ai python
+/track bbc trump police
 ```
 
 Flow:
@@ -312,15 +353,15 @@ Flow:
 ```text
 Start monitoring
 → resolve source key
-→ use Hacker News profile
-→ get current matching topics
+→ use source profile
+→ get current matching items
 → save current matching links as seen_links
 → store monitor in state.json
 → background checker reads monitors
 → send alert only for new matching links
 ```
 
-This prevents old posts from being sent as new alerts.
+This prevents old items from being sent as new alerts.
 
 ### Saved keyword flow
 
@@ -342,7 +383,7 @@ Save keywords
 ### Untrack flow
 
 ```text
-/untrack hn
+/untrack bbc
 ```
 
 Flow:
@@ -376,13 +417,21 @@ Example:
         "last_check": 0,
         "keywords": ["ai", "python", "bot"],
         "seen_links": []
+      },
+      "bbc_all": {
+        "source": "bbc_all",
+        "adapter": "rss_feed",
+        "profile": "BBC News",
+        "url": "bbc_all",
+        "interval": 1,
+        "last_check": 0,
+        "keywords": ["trump", "police", "government"],
+        "seen_links": []
       }
     }
   }
 }
 ```
-
-When `/untrack hn` is used, the matching Hacker News monitor is removed from `monitors`.
 
 ## Source presets
 
@@ -392,21 +441,15 @@ Instead of writing a Hacker News URL manually, the user can write:
 
 ```text
 /check_source hn ai python
-```
-
-or:
-
-```text
 /track hn ai python
 ```
 
-Instead of writing a BBC RSS URL manually, the user can write:
+Instead of writing BBC RSS feed URLs manually, the user can write:
 
 ```text
 /check_source bbc trump police
+/track bbc trump police
 ```
-
-BBC background monitoring is not available yet, so this currently works only for manual checks.
 
 ## Adapter idea
 
@@ -494,6 +537,7 @@ Current stable features:
 - Keyword normalization
 - Saved keywords
 - Hacker News background monitoring
+- BBC background monitoring
 - Universal `monitors` state for active monitors
 - Watchlist view
 - Source untracking
@@ -501,8 +545,6 @@ Current stable features:
 
 Known limitations:
 
-- BBC source currently supports manual checking, not background monitoring
-- Background monitoring is currently implemented for Hacker News only
 - Monitoring interval is currently fixed at 1 minute
 - Storage currently uses `state.json`
 - No database yet
@@ -513,7 +555,6 @@ Known limitations:
 
 Planned improvements:
 
-- Add BBC background monitoring
 - Add interval selection
 - Add Telegram button UI
 - Add user-created keyword templates
@@ -541,9 +582,9 @@ The command interface is kept simple now so the same logic can later be reused b
 ## Example use cases
 
 - Track Hacker News for AI, Python, startup, API, or product keywords
-- Check BBC news feeds for politics, business, technology, or world events
+- Track BBC news feeds for politics, business, technology, or world events
 - Save a keyword list and reuse it later
-- Get Telegram alerts when new matching Hacker News topics appear
+- Get Telegram alerts when new matching Hacker News or BBC items appear
 - Disable active monitoring when a source is no longer needed
 
 ## License
