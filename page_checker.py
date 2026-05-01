@@ -88,6 +88,22 @@ def show_keywords(chat_id):
     return message
 
 
+def clear_keywords(chat_id):
+    state = read_state()
+
+    if chat_id not in state or not isinstance(state[chat_id], dict):
+        return "No keywords saved."
+
+    if "keywords" not in state[chat_id] or not state[chat_id]["keywords"]:
+        return "No keywords saved."
+
+    state[chat_id].pop("keywords", None)
+
+    write_state(state)
+
+    return "Saved keywords cleared."
+
+
 def normalize_keywords(keywords):
     clean_keywords = []
 

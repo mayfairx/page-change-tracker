@@ -7,6 +7,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+
 from dotenv import load_dotenv
 
 import os
@@ -24,6 +25,7 @@ from page_checker import (
     track_source_monitor,
     untrack_source_monitor,
     get_bbc_all_matches,
+    clear_keywords,
 )
 
 load_dotenv()
@@ -68,6 +70,36 @@ def clear_pending_monitor(context):
     context.user_data.pop("pending_interval", None)
     context.user_data.pop("pending_step", None)
     context.user_data.pop("pending_untrack_source", None)
+
+
+def get_saved_keywords_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Show keywords", callback_data="saved_keywords_show"),
+            InlineKeyboardButton("Set / Replace", callback_data="saved_keywords_set"),
+        ],
+        [
+            InlineKeyboardButton(
+                "Clear keywords", callback_data="saved_keywords_clear"
+            ),
+        ],
+        [
+            InlineKeyboardButton("Back", callback_data="menu_back"),
+        ],
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+
+def get_confirm_clear_keywords_menu():
+    keyboard = [
+        [
+            InlineKeyboardButton("Clear", callback_data="saved_keywords_clear_confirm"),
+            InlineKeyboardButton("Cancel", callback_data="saved_keywords_clear_cancel"),
+        ]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
 
 
 def get_confirm_monitor_menu():
@@ -344,10 +376,58 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "menu_keywords":
+        await query.edit_message_text(
+            "Saved keywords\n\n" "Choose an action:",
+            reply_markup=get_saved_keywords_menu(),
+        )
+        return
+
+    if data == "saved_keywords_show":
         chat_id = str(update.effective_chat.id)
         result = show_keywords(chat_id)
 
-        await query.edit_message_text(result, reply_markup=get_back_menu())
+        await query.edit_message_text(
+            result,
+            reply_markup=get_saved_keywords_menu(),
+        )
+        return
+
+    if data == "saved_keywords_set":
+        context.user_data["pending_action"] = "set_keywords"
+        context.user_data["pending_step"] = "saved_keywords"
+
+        await query.edit_message_text(
+            "Send keywords to save.\n\n" "Example:\n" "ai python api prompt",
+            reply_markup=get_back_menu(),
+        )
+        return
+
+    if data == "saved_keywords_clear":
+        await query.edit_message_text(
+            "Clear saved keywords?\n\n" "This will remove your saved keyword list.",
+            reply_markup=get_confirm_clear_keywords_menu(),
+        )
+        return
+
+    if data == "saved_keywords_clear_confirm":
+        chat_id = str(update.effective_chat.id)
+        result = clear_keywords(chat_id)
+
+        clear_pending_monitor(context)
+
+        await query.edit_message_text(
+            result,
+            reply_markup=get_saved_keywords_menu(),
+        )
+        return
+
+    if data == "saved_keywords_clear_cancel":
+        clear_pending_monitor(context)
+
+        await query.edit_message_text(
+            "Saved keywords\n\n" "Choose an action:",
+            reply_markup=get_saved_keywords_menu(),
+        )
         return
 
     if data == "check_source_bbc":
@@ -521,10 +601,29 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pending_source = context.user_data.get("pending_source")
     pending_step = context.user_data.get("pending_step")
 
-    if pending_action not in ["track", "check"] or not pending_source:
+    if pending_action not in ["track", "check", "set_keywords"]:
+        return
+
+    if pending_action in ["track", "check"] and not pending_source:
         return
 
     chat_id = str(update.effective_chat.id)
+
+    if pending_action == "set_keywords":
+        keywords = normalize_keywords(update.effective_message.text.split())
+
+        if not keywords:
+            await update.effective_message.reply_text("No valid keywords provided.")
+            return
+
+        result = set_keywords(chat_id, keywords)
+
+        clear_pending_monitor(context)
+
+        await update.effective_message.reply_text(
+            result, reply_markup=get_saved_keywords_menu()
+        )
+        return
 
     if pending_step == "keywords":
         keywords = normalize_keywords(update.effective_message.text.split())
