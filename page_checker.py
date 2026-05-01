@@ -16,6 +16,7 @@ STATE_FILE = "state.json"
 # State
 # =========================
 
+
 def read_state():
     try:
         with open(STATE_FILE, "r", encoding="utf-8") as file:
@@ -25,13 +26,16 @@ def read_state():
     except json.JSONDecodeError:
         return {}
 
+
 def write_state(state):
     with open(STATE_FILE, "w", encoding="utf-8") as file:
         json.dump(state, file, indent=2, ensure_ascii=False)
 
+
 # =========================
 # Page loading
 # =========================
+
 
 def get_page_content(url):
     try:
@@ -39,16 +43,18 @@ def get_page_content(url):
 
         if response.status_code != 200:
             return None
-        
+
         response.encoding = "utf-8"
         return response.text
-    
+
     except requests.RequestException:
         return None
+
 
 # =========================
 # Keywords
 # =========================
+
 
 def set_keywords(chat_id, keywords):
     state = read_state()
@@ -62,23 +68,25 @@ def set_keywords(chat_id, keywords):
 
     return "Keywords saved."
 
+
 def show_keywords(chat_id):
     state = read_state()
 
     if chat_id not in state or "keywords" not in state[chat_id]:
         return "No keywords saved."
-    
+
     keywords = state[chat_id]["keywords"]
 
     if not keywords:
         return "No keywords saved."
-    
+
     message = "Saved keywords:\n\n"
 
     for keyword in keywords:
         message += f"{keyword}\n"
 
     return message
+
 
 def normalize_keywords(keywords):
     clean_keywords = []
@@ -92,11 +100,13 @@ def normalize_keywords(keywords):
             if clean_keyword:
                 clean_keywords.append(clean_keyword)
 
-    return clean_keywords     
+    return clean_keywords
+
 
 # =========================
 # Hacker News parsing
 # =========================
+
 
 def get_hn_topics(url):
     content = get_page_content(url)
@@ -133,21 +143,18 @@ def get_hn_topics(url):
 
             if age_tag is not None:
                 age = age_tag.text
-            
-        topics.append({
-            "title": title,
-            "link": full_link,
-            "age": age
-        })
+
+        topics.append({"title": title, "link": full_link, "age": age})
 
     return topics
+
 
 def get_hn_matches(url, keywords):
     topics = get_hn_topics(url)
 
     if topics is None:
         return None
-    
+
     matches = []
 
     for topic in topics:
@@ -163,18 +170,22 @@ def get_hn_matches(url, keywords):
                 matched_keywords.append(keyword_lower)
 
         if matched_keywords:
-            matches.append({
-                "title": topic["title"],
-                "link": topic["link"],
-                "age": topic["age"],
-                "keywords": matched_keywords
-            })
+            matches.append(
+                {
+                    "title": topic["title"],
+                    "link": topic["link"],
+                    "age": topic["age"],
+                    "keywords": matched_keywords,
+                }
+            )
 
-    return matches 
+    return matches
+
 
 # =========================
 # Hacker News monitoring
 # =========================
+
 
 def track_hn_page(chat_id, url, interval, keywords):
     matches = get_hn_matches(url, keywords)
@@ -200,7 +211,7 @@ def track_hn_page(chat_id, url, interval, keywords):
         "interval": interval,
         "last_check": 0,
         "keywords": keywords,
-        "seen_links": seen_links
+        "seen_links": seen_links,
     }
 
     if "monitors" not in state[chat_id]:
@@ -221,16 +232,18 @@ def track_hn_page(chat_id, url, interval, keywords):
         f"Current matching topics saved: {len(seen_links)}"
     )
 
+
 # =========================
 # RSS parsing
 # =========================
+
 
 def get_rss_items(url):
     feed = feedparser.parse(url)
 
     if not feed.entries:
         return None
-    
+
     items = []
 
     for entry in feed.entries:
@@ -239,21 +252,19 @@ def get_rss_items(url):
         published = entry.get("published", entry.get("updated", "Unknown time"))
         summary = entry.get("summary", "")
 
-        items.append({
-            "title": title,
-            "link": link,
-            "published": published,
-            "summary": summary
-        })
+        items.append(
+            {"title": title, "link": link, "published": published, "summary": summary}
+        )
 
     return items
+
 
 def track_bbc_all_monitor(chat_id, interval, keywords):
     matches = get_bbc_all_matches(keywords)
 
     if matches is None:
         return "Could not get BBC RSS feed."
-    
+
     state = read_state()
 
     if chat_id not in state:
@@ -272,7 +283,7 @@ def track_bbc_all_monitor(chat_id, interval, keywords):
         "interval": interval,
         "last_check": 0,
         "keywords": keywords,
-        "seen_links": seen_links
+        "seen_links": seen_links,
     }
 
     if "monitors" not in state[chat_id]:
@@ -292,6 +303,7 @@ def track_bbc_all_monitor(chat_id, interval, keywords):
         f"Current matching items saved: {len(seen_links)}"
     )
 
+
 # =========================
 # Source configuration
 # =========================
@@ -301,37 +313,29 @@ HACKER_NEWS_URL = "https://news.ycombinator.com/newest"
 BBC_ALL_FEEDS = [
     {
         "name": "BBC Top Stories",
-        "url": "https://feeds.bbci.co.uk/news/rss.xml?edition=uk"
+        "url": "https://feeds.bbci.co.uk/news/rss.xml?edition=uk",
     },
-    {
-        "name": "BBC World",
-        "url": "https://feeds.bbci.co.uk/news/world/rss.xml"
-    },
-    {
-        "name": "BBC UK",
-        "url": "https://feeds.bbci.co.uk/news/uk/rss.xml"
-    },
-    {
-        "name": "BBC Business",
-        "url": "https://feeds.bbci.co.uk/news/business/rss.xml"
-    },
+    {"name": "BBC World", "url": "https://feeds.bbci.co.uk/news/world/rss.xml"},
+    {"name": "BBC UK", "url": "https://feeds.bbci.co.uk/news/uk/rss.xml"},
+    {"name": "BBC Business", "url": "https://feeds.bbci.co.uk/news/business/rss.xml"},
     {
         "name": "BBC Technology",
-        "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"
+        "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
     },
     {
         "name": "BBC Science",
-        "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"
+        "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
     },
     {
         "name": "BBC Entertainment",
-        "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"
-    }
+        "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
+    },
 ]
 
 # =========================
 # BBC matching
 # =========================
+
 
 def get_bbc_all_matches(keywords):
     matches = []
@@ -349,7 +353,7 @@ def get_bbc_all_matches(keywords):
 
         feeds_checked += 1
 
-        for item in items: 
+        for item in items:
             text = f"{item['title']} {item['summary']}".lower()
             matched_keywords = []
 
@@ -366,22 +370,26 @@ def get_bbc_all_matches(keywords):
 
                 seen_links.add(item["link"])
 
-                matches.append({
-                    "source": feed_name,
-                    "title": item["title"],
-                    "link": item["link"],
-                    "published": item["published"],
-                    "keywords": matched_keywords
-                })
+                matches.append(
+                    {
+                        "source": feed_name,
+                        "title": item["title"],
+                        "link": item["link"],
+                        "published": item["published"],
+                        "keywords": matched_keywords,
+                    }
+                )
 
     if feeds_checked == 0:
         return None
-    
+
     return matches
+
 
 # =========================
 # Manual source checks
 # =========================
+
 
 def check_hacker_news_source(keywords):
     matches = get_hn_matches(HACKER_NEWS_URL, keywords)
@@ -410,6 +418,7 @@ def check_hacker_news_source(keywords):
         )
 
     return message
+
 
 def check_bbc_all_source(keywords):
     matches = get_bbc_all_matches(keywords)
@@ -440,9 +449,11 @@ def check_bbc_all_source(keywords):
 
     return message
 
+
 # =========================
 # Source presets
 # =========================
+
 
 def check_source_preset(source_key, keywords):
     source_key = source_key.strip().lower()
@@ -462,29 +473,28 @@ def check_source_preset(source_key, keywords):
         "bbc"
     )
 
+
 # =========================
 # Monitor creation
 # =========================
+
 
 def track_source_monitor(chat_id, source_key, interval, keywords):
     source_key = source_key.strip().lower()
 
     if source_key in ["hn", "hacker_news"]:
         return track_hn_page(chat_id, HACKER_NEWS_URL, interval, keywords)
-    
+
     if source_key in ["bbc", "bbc_all"]:
         return track_bbc_all_monitor(chat_id, interval, keywords)
-    
-    return (
-        "Unknown source.\n\n"
-        "Available sources:\n"
-        "hn\n"
-        "bbc"
-    )
+
+    return "Unknown source.\n\n" "Available sources:\n" "hn\n" "bbc"
+
 
 # =========================
 # Monitor removal
 # =========================
+
 
 def untrack_source_monitor(chat_id, source_key):
     source_key = source_key.strip().lower()
@@ -496,12 +506,7 @@ def untrack_source_monitor(chat_id, source_key):
         source_name = "bbc_all"
         display_name = "BBC News"
     else:
-        return (
-            "Unknown source.\n\n"
-            "Available sources:\n"
-            "hn\n"
-            "bbc"
-        )
+        return "Unknown source.\n\n" "Available sources:\n" "hn\n" "bbc"
 
     state = read_state()
     user_data = state.get(chat_id, {})
@@ -540,20 +545,18 @@ def untrack_source_monitor(chat_id, source_key):
         f"Removed monitors: {len(monitor_ids_to_remove)}"
     )
 
+
 # =========================
 # Watchlist
 # =========================
+
 
 def show_watchlist(chat_id):
     state = read_state()
     user_data = state.get(chat_id, {})
 
     if not isinstance(user_data, dict) or not user_data:
-        return (
-            "Watchlist\n\n"
-            "No active monitors.\n\n"
-            "Saved keywords: none"
-        )
+        return "Watchlist\n\n" "No active monitors."
 
     message = "Watchlist\n\n"
     has_monitors = False
@@ -591,17 +594,8 @@ def show_watchlist(chat_id):
             has_monitors = True
             message += "Active monitors:\n"
             message += "\n\n".join(monitor_lines)
-            message += "\n\n"
 
     if not has_monitors:
-        message += "No active monitors.\n\n"
-
-    saved_keywords = user_data.get("keywords", [])
-
-    if saved_keywords:
-        message += "Saved keywords:\n"
-        message += ", ".join(saved_keywords)
-    else:
-        message += "Saved keywords: none"
+        message += "No active monitors."
 
     return message
