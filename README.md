@@ -2,7 +2,7 @@
 
 Telegram keyword monitoring bot for structured sources like Hacker News and BBC RSS feeds.
 
-The bot can check preset sources by keywords, save reusable keywords, monitor Hacker News and BBC News in the background, show active monitors, stop monitors, and manage monitor setup through a Telegram button UI.
+The bot can check preset sources by keywords, save reusable keywords, monitor Hacker News and BBC News in the background, show active monitors, stop monitors, and manage the main user flow through Telegram buttons.
 
 ## What it does
 
@@ -14,13 +14,16 @@ The bot can check preset sources by keywords, save reusable keywords, monitor Ha
 - Saves reusable keyword lists
 - Shows active monitors with `/watchlist`
 - Stops active monitors with `/untrack`
+- Supports button-based source checks
 - Supports button-based monitor setup
 - Supports button-based monitor stopping
+- Supports button-based saved keyword management
 - Supports manual keyword input through buttons
 - Supports saved keywords through buttons
 - Supports interval selection: 1 min, 5 min, 15 min, or custom
 - Shows a confirmation step before creating a monitor
 - Shows a confirmation step before stopping a monitor
+- Shows a confirmation step before clearing saved keywords
 - Cleans keyword input automatically, so `ai, python, bot` becomes `ai`, `python`, `bot`
 - Stores active background monitors in a universal `monitors` state structure
 
@@ -38,6 +41,171 @@ Button menu:
 [Check now] [Start monitoring]
 [Watchlist] [Saved keywords]
 ```
+
+---
+
+## Main user flows
+
+### Check now with buttons
+
+Flow:
+
+```text
+/start
+→ Check now
+→ Hacker News / BBC News
+→ Enter keywords / Use saved keywords
+→ Show results
+```
+
+Example:
+
+```text
+/start
+→ Check now
+→ Hacker News
+→ Enter keywords
+→ ai python bot
+```
+
+The bot immediately checks Hacker News and returns matching items.
+
+Saved keywords flow:
+
+```text
+/start
+→ Check now
+→ BBC News
+→ Use saved keywords
+```
+
+The bot uses the currently saved keyword list and returns matching BBC items.
+
+---
+
+### Start monitoring with buttons
+
+Flow:
+
+```text
+/start
+→ Start monitoring
+→ Hacker News / BBC News
+→ Enter keywords / Use saved keywords
+→ 1 min / 5 min / 15 min / Custom
+→ Confirm monitor
+→ Start / Cancel
+```
+
+Example:
+
+```text
+/start
+→ Start monitoring
+→ Hacker News
+→ Enter keywords
+→ ai python bot
+→ 5 min
+→ Start
+```
+
+This creates a Hacker News monitor with:
+
+```text
+Source: Hacker News
+Keywords: ai, python, bot
+Interval: 5 min
+```
+
+### Custom interval
+
+The user can choose `Custom` and send any interval in minutes.
+
+Example:
+
+```text
+10
+```
+
+This creates a monitor that checks every 10 minutes.
+
+---
+
+### Watchlist and stop monitoring with buttons
+
+Flow:
+
+```text
+/start
+→ Watchlist
+→ Stop Hacker News / Stop BBC News
+→ Confirm stop
+→ Stop / Cancel
+```
+
+Example:
+
+```text
+/start
+→ Watchlist
+→ Stop BBC News
+→ Stop
+```
+
+Expected result:
+
+```text
+Monitor disabled.
+
+Source: BBC News
+Removed monitors: 1
+```
+
+After stopping a monitor, the bot shows the updated watchlist.
+
+---
+
+### Manage saved keywords with buttons
+
+Flow:
+
+```text
+/start
+→ Saved keywords
+→ Show keywords / Set / Replace / Clear keywords
+```
+
+Set or replace saved keywords:
+
+```text
+/start
+→ Saved keywords
+→ Set / Replace
+→ ai python api prompt
+```
+
+Show saved keywords:
+
+```text
+/start
+→ Saved keywords
+→ Show keywords
+```
+
+Clear saved keywords:
+
+```text
+/start
+→ Saved keywords
+→ Clear keywords
+→ Clear / Cancel
+```
+
+Saved keywords can then be reused in both check and monitoring flows.
+
+---
+
+## Command examples
 
 ### Check Hacker News
 
@@ -109,53 +277,7 @@ Keywords: ai, python, bot
 Current matching topics saved: 4
 ```
 
-### Start monitoring with buttons
-
-Flow:
-
-```text
-/start
-→ Start monitoring
-→ Hacker News / BBC News
-→ Enter keywords / Use saved keywords
-→ 1 min / 5 min / 15 min / Custom
-→ Confirm monitor
-→ Start / Cancel
-```
-
-Example:
-
-```text
-/start
-→ Start monitoring
-→ Hacker News
-→ Enter keywords
-→ ai python bot
-→ 5 min
-→ Start
-```
-
-This creates a Hacker News monitor with:
-
-```text
-Source: Hacker News
-Keywords: ai, python, bot
-Interval: 5 min
-```
-
-### Custom interval
-
-The user can choose `Custom` and send any interval in minutes.
-
-Example:
-
-```text
-10
-```
-
-This creates a monitor that checks every 10 minutes.
-
-### Use saved keywords
+### Use saved keywords with command
 
 Save keywords first:
 
@@ -163,24 +285,17 @@ Save keywords first:
 /set_keywords ai python api prompt
 ```
 
-Then use command mode:
+Then use:
 
 ```text
 /track hn
 ```
 
-Or button mode:
+or:
 
 ```text
-/start
-→ Start monitoring
-→ Hacker News
-→ Use saved keywords
-→ Choose interval
-→ Start
+/track bbc
 ```
-
-This skips manual keyword input.
 
 ### Show active monitors
 
@@ -209,9 +324,6 @@ Active monitors:
   Every: 5 min
   Keywords: ai, python, bot
   Seen links: 8
-
-Saved keywords:
-ai, python, api, prompt
 ```
 
 ### Stop monitoring with command
@@ -230,37 +342,7 @@ Source: BBC News
 Removed monitors: 1
 ```
 
-### Stop monitoring with buttons
-
-Flow:
-
-```text
-/start
-→ Watchlist
-→ Stop Hacker News / Stop BBC News
-→ Confirm stop
-→ Stop / Cancel
-```
-
-Example:
-
-```text
-/start
-→ Watchlist
-→ Stop BBC News
-→ Stop
-```
-
-Expected result:
-
-```text
-Monitor disabled.
-
-Source: BBC News
-Removed monitors: 1
-```
-
-After stopping a monitor, the bot shows the updated watchlist.
+---
 
 ## Supported sources
 
@@ -268,6 +350,8 @@ After stopping a monitor, the bot shows the updated watchlist.
 |---|---|---|---|
 | Hacker News | `hn` | Structured Link Feed | Check + background monitoring |
 | BBC News | `bbc` | RSS Feed | Check + background monitoring |
+
+---
 
 ## Main commands
 
@@ -353,6 +437,8 @@ Examples:
 /untrack bbc
 ```
 
+---
+
 ## Button UI
 
 The bot has a Telegram button interface.
@@ -376,14 +462,17 @@ Main menu:
 /start
 → Check now
 → Choose source
-→ Hacker News / BBC News
+→ Choose keywords option
+→ Show results
 ```
 
-For now, this button flow shows the correct command format for manual checks:
+Current check flow:
 
 ```text
-/check_source hn ai python
-/check_source bbc trump police
+Check now
+→ Hacker News / BBC News
+→ Enter keywords / Use saved keywords
+→ Result message
 ```
 
 ### Start monitoring flow
@@ -406,6 +495,22 @@ Start monitoring
 → 1 min / 5 min / 15 min / Custom
 → Confirm monitor
 → Start / Cancel
+```
+
+### Saved keywords flow
+
+```text
+/start
+→ Saved keywords
+→ Show keywords / Set / Replace / Clear keywords
+```
+
+Current saved keywords menu:
+
+```text
+[Show keywords] [Set / Replace]
+[Clear keywords]
+[Back]
 ```
 
 ### Keyword options
@@ -432,6 +537,14 @@ after saving keywords with:
 
 ```text
 /set_keywords ai python api prompt
+```
+
+or through the button UI:
+
+```text
+/start
+→ Saved keywords
+→ Set / Replace
 ```
 
 ### Interval options
@@ -519,6 +632,26 @@ Buttons:
 
 The monitor is removed only after pressing `Stop`.
 
+### Clear keywords confirmation
+
+Before clearing saved keywords, the bot shows a confirmation screen:
+
+```text
+Clear saved keywords?
+
+This will remove your saved keyword list.
+```
+
+Buttons:
+
+```text
+[Clear] [Cancel]
+```
+
+The saved keyword list is removed only after pressing `Clear`.
+
+---
+
 ## Current command interface
 
 Current user-facing commands:
@@ -536,6 +669,8 @@ Current user-facing commands:
 
 Legacy development commands were removed from the Telegram interface to keep the bot focused on source monitoring.
 
+---
+
 ## Current architecture
 
 The project currently has several main parts:
@@ -550,13 +685,15 @@ Handles Telegram commands, button UI, user input, temporary button-flow state, a
 page_checker.py
 ```
 
-Handles page loading, keyword logic, RSS parsing, Hacker News parsing, BBC matching, source presets, monitor creation, monitor removal, state handling, and watchlist output.
+Handles page loading, keyword logic, RSS parsing, Hacker News parsing, BBC matching, source presets, monitor creation, monitor removal, saved keyword logic, state handling, and watchlist output.
 
 ```text
 state.json
 ```
 
 Stores saved keywords, active monitors, seen links, intervals, and last check time.
+
+---
 
 ## How the bot works
 
@@ -579,6 +716,26 @@ Telegram command
 ```
 
 Manual checks do not create monitors and do not save tracking data.
+
+### Button-based source check
+
+```text
+/start
+→ Check now
+→ source selected
+→ keywords selected or entered
+→ result shown
+```
+
+Temporary data is stored in `context.user_data` during the flow:
+
+```python
+context.user_data["pending_action"] = "check"
+context.user_data["pending_source"] = "hn"
+context.user_data["pending_step"] = "keywords"
+```
+
+After the result is shown, temporary setup data is cleared.
 
 ### Background monitoring
 
@@ -656,27 +813,48 @@ context.user_data["pending_untrack_source"] = "bbc"
 
 After stopping or cancelling, the temporary stop data is cleared.
 
-### Saved keyword flow
+### Button-based saved keywords management
+
+Flow:
+
+```text
+/start
+→ Saved keywords
+→ Set / Replace
+→ user sends keywords
+→ keywords saved
+```
+
+Temporary data:
+
+```python
+context.user_data["pending_action"] = "set_keywords"
+context.user_data["pending_step"] = "saved_keywords"
+```
+
+After saving, temporary data is cleared.
+
+### Saved keyword reuse
+
+Command flow:
 
 ```text
 /set_keywords ai python bot
 /track hn
 ```
 
-Flow:
+Button check flow:
 
 ```text
-Save keywords
-→ start monitoring source
-→ no keywords provided in /track
-→ bot uses saved keywords
-→ monitor is created
+/start
+→ Check now
+→ Hacker News
+→ Use saved keywords
 ```
 
-Button flow:
+Button monitoring flow:
 
 ```text
-/set_keywords ai python bot
 /start
 → Start monitoring
 → Hacker News
@@ -701,6 +879,8 @@ Telegram command
 → save updated state
 → confirm removal
 ```
+
+---
 
 ## Monitors state
 
@@ -738,6 +918,8 @@ Example:
 }
 ```
 
+---
+
 ## Source presets
 
 Source presets hide technical URLs from the user.
@@ -756,6 +938,8 @@ Instead of writing BBC RSS feed URLs manually, the user can write:
 /track bbc trump police
 ```
 
+---
+
 ## Adapter idea
 
 The project is moving toward an adapter-based monitoring system.
@@ -771,6 +955,8 @@ Current profiles:
 - **BBC News**
 
 The goal is to keep user-facing commands simple while keeping parsing logic flexible internally.
+
+---
 
 ## Keyword normalization
 
@@ -791,6 +977,8 @@ bot
 ```
 
 This makes the bot more tolerant of normal human input.
+
+---
 
 ## Installation
 
@@ -819,6 +1007,8 @@ Run the bot:
 python bot.py
 ```
 
+---
+
 ## Requirements
 
 Main libraries:
@@ -828,6 +1018,8 @@ Main libraries:
 - `requests`
 - `beautifulsoup4`
 - `feedparser`
+
+---
 
 ## Project status
 
@@ -842,6 +1034,8 @@ Current stable features:
 - Source presets
 - Keyword normalization
 - Saved keywords
+- Button-based saved keyword management
+- Button-based source checks
 - Hacker News background monitoring
 - BBC background monitoring
 - Button-based monitor setup
@@ -852,6 +1046,7 @@ Current stable features:
 - Custom interval input
 - Confirmation step before monitor creation
 - Confirmation step before monitor stopping
+- Confirmation step before clearing saved keywords
 - Dynamic watchlist stop buttons based on active monitors
 - Universal `monitors` state for active monitors
 - Watchlist view
@@ -862,18 +1057,20 @@ Known limitations:
 
 - Storage currently uses `state.json`
 - No database yet
-- Button UI is still command-assisted for manual checks
-- No fully button-based manual check flow yet
+- Button UI works, but visual polish is still minimal
 - No named keyword templates yet
 - No deployment guide yet
 - The main logic file should be split into modules later
 - No screenshots or demo GIF yet
 
+---
+
 ## Roadmap
 
 Planned improvements:
 
-- Improve button-based manual check flow
+- Improve button labels and message text
+- Add UI polish with clearer button names and emojis
 - Add named user keyword templates
 - Split the large logic file into modules
 - Add SQLite storage
@@ -881,19 +1078,31 @@ Planned improvements:
 - Add deployment guide
 - Add screenshots and demo GIFs
 
-## Future button flow
+---
 
-Planned UI direction:
+## Next UI direction
+
+The next project step is UI polish.
+
+Possible improved menu:
 
 ```text
-/start
-→ Check now
-→ Choose source
-→ Enter keywords / Use saved keywords
-→ Show results
+[🔎 Check now] [📡 Start monitor]
+[📋 Watchlist] [🔑 Keywords]
 ```
 
-The monitor setup and stop flows already work through buttons.
+Possible improved flow names:
+
+```text
+Start monitoring → Start monitor
+Saved keywords → Keywords
+Set / Replace → Set keywords
+Clear keywords → Delete keywords
+```
+
+The main logic already works. The next step is making the bot feel cleaner and more user-friendly.
+
+---
 
 ## Example use cases
 
@@ -902,6 +1111,9 @@ The monitor setup and stop flows already work through buttons.
 - Save a keyword list and reuse it later
 - Get Telegram alerts when new matching Hacker News or BBC items appear
 - Stop active monitoring when a source is no longer needed
+- Quickly check a source without creating a background monitor
+
+---
 
 ## Learning focus
 
@@ -918,6 +1130,7 @@ This project was built to practice:
 - JSON state management
 - Basic monitor architecture
 - Git commits and project cleanup
+- Button-based UX flows
 
 ## License
 
