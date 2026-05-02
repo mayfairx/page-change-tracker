@@ -21,7 +21,10 @@ from bot.handlers import (
     check_monitors,
 )
 
+from core.db import init_db
+
 load_dotenv()
+init_db()
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:

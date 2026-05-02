@@ -24,50 +24,31 @@ def get_page_content(url):
 
 
 def set_keywords(chat_id, keywords):
-    state = read_state()
+    from core.db import save_keywords
 
-    if chat_id not in state:
-        state[chat_id] = {}
-
-    state[chat_id]["keywords"] = keywords
-
-    write_state(state)
-
+    save_keywords(chat_id, keywords)
     return "Keywords saved."
 
 
 def show_keywords(chat_id):
-    state = read_state()
+    from core.db import load_keywords
 
-    if chat_id not in state or "keywords" not in state[chat_id]:
-        return "No keywords saved."
-
-    keywords = state[chat_id]["keywords"]
-
+    keywords = load_keywords(chat_id)
     if not keywords:
         return "No keywords saved."
-
     message = "Saved keywords:\n\n"
-
     for keyword in keywords:
         message += f"{keyword}\n"
-
     return message
 
 
 def clear_keywords(chat_id):
-    state = read_state()
+    from core.db import load_keywords, save_keywords
 
-    if chat_id not in state or not isinstance(state[chat_id], dict):
+    keywords = load_keywords(chat_id)
+    if not keywords:
         return "No keywords saved."
-
-    if "keywords" not in state[chat_id] or not state[chat_id]["keywords"]:
-        return "No keywords saved."
-
-    state[chat_id].pop("keywords", None)
-
-    write_state(state)
-
+    save_keywords(chat_id, [])
     return "Saved keywords cleared."
 
 
@@ -161,44 +142,24 @@ def get_hn_matches(url, keywords):
 
 
 def track_hn_page(chat_id, url, interval, keywords):
-    matches = get_hn_matches(url, keywords)
+    from core.db import save_monitor
 
+    matches = get_hn_matches(url, keywords)
     if matches is None:
         return "Could not get HN topics."
-
-    state = read_state()
-
-    if chat_id not in state:
-        state[chat_id] = {}
-
-    seen_links = []
-
-    for item in matches:
-        seen_links.append(item["link"])
-
+    seen_links = [item["link"] for item in matches]
     monitor_data = {
         "source": "hacker_news",
-        "adapter": "structured_link_feed",
-        "profile": "Hacker News",
         "url": url,
         "interval": interval,
-        "last_check": 0,
         "keywords": keywords,
+        "last_check": 0,
         "seen_links": seen_links,
     }
-
-    if "monitors" not in state[chat_id]:
-        state[chat_id]["monitors"] = {}
-
-    state[chat_id]["monitors"][url] = monitor_data
-
-    write_state(state)
-
+    save_monitor(chat_id, monitor_data)
     return (
         "Monitor enabled.\n\n"
         "Source: Hacker News\n"
-        "Adapter: Structured Link Feed\n"
-        "Profile: Hacker News\n"
         f"URL: {url}\n"
         f"Interval: {interval} min\n"
         f"Keywords: {', '.join(keywords)}\n"
@@ -228,44 +189,24 @@ def get_rss_items(url):
 
 
 def track_bbc_all_monitor(chat_id, interval, keywords):
-    matches = get_bbc_all_matches(keywords)
+    from core.db import save_monitor
 
+    matches = get_bbc_all_matches(keywords)
     if matches is None:
         return "Could not get BBC RSS feed."
-
-    state = read_state()
-
-    if chat_id not in state:
-        state[chat_id] = {}
-
-    seen_links = []
-
-    for item in matches:
-        seen_links.append(item["link"])
-
+    seen_links = [item["link"] for item in matches]
     monitor_data = {
         "source": "bbc_all",
-        "adapter": "rss_feed",
-        "profile": "BBC News",
         "url": "bbc_all",
         "interval": interval,
-        "last_check": 0,
         "keywords": keywords,
+        "last_check": 0,
         "seen_links": seen_links,
     }
-
-    if "monitors" not in state[chat_id]:
-        state[chat_id]["monitors"] = {}
-
-    state[chat_id]["monitors"]["bbc_all"] = monitor_data
-
-    write_state(state)
-
+    save_monitor(chat_id, monitor_data)
     return (
         "Monitor enabled.\n\n"
         "Source: BBC News\n"
-        "Adapter: RSS Feed\n"
-        "Profile: BBC News\n"
         f"Interval: {interval} min\n"
         f"Keywords: {', '.join(keywords)}\n"
         f"Current matching items saved: {len(seen_links)}"
@@ -437,8 +378,8 @@ def track_source_monitor(chat_id, source_key, interval, keywords):
 
 
 def untrack_source_monitor(chat_id, source_key):
+    from core.db import load_monitors, delete_monitor
     source_key = source_key.strip().lower()
-
     if source_key in ["hn", "hacker_news"]:
         source_name = "hacker_news"
         display_name = "Hacker News"
@@ -446,90 +387,36 @@ def untrack_source_monitor(chat_id, source_key):
         source_name = "bbc_all"
         display_name = "BBC News"
     else:
-        return "Unknown source.\n\n" "Available sources:\n" "hn\n" "bbc"
-
-    state = read_state()
-    user_data = state.get(chat_id, {})
-
-    if not isinstance(user_data, dict):
-        return "No active monitors."
-
-    monitors = user_data.get("monitors", {})
-
-    if not isinstance(monitors, dict) or not monitors:
-        return "No active monitors."
-
-    monitor_ids_to_remove = []
-
-    for monitor_id, data in monitors.items():
-        if not isinstance(data, dict):
-            continue
-
-        if data.get("source") == source_name:
-            monitor_ids_to_remove.append(monitor_id)
-
-    if not monitor_ids_to_remove:
-        return f"No active {display_name} monitor found."
-
-    for monitor_id in monitor_ids_to_remove:
-        del monitors[monitor_id]
-
-    if not monitors:
-        user_data.pop("monitors", None)
-
-    write_state(state)
-
-    return (
-        "Monitor disabled.\n\n"
-        f"Source: {display_name}\n"
-        f"Removed monitors: {len(monitor_ids_to_remove)}"
-    )
+        return "Unknown source.\n\nAvailable sources:\nhn\nbbc"
+    monitors = load_monitors(chat_id)
+    removed = 0
+    for url, data in list(monitors.items()):
+        if data ["source"] == source_name:
+            delete_monitor(chat_id, url)
+            removed += 1
+        if removed == 0, 
+            return f"No active {display_name} monitor found."
+        return (
+            "Monitor disabled.\n\n"
+            f"Source: {display_name}\n"
+            f"Removed monitors: {removed}"
+            )
 
 
 def show_watchlist(chat_id):
-    state = read_state()
-    user_data = state.get(chat_id, {})
-
-    if not isinstance(user_data, dict) or not user_data:
+    from core.db import load_monitors
+    monitors = load_monitors(chat_id)
+    if not monitors:
         return "<b>📋 Watchlist</b>\n\nNo active monitors."
-    message = "<b>📋 Watchlist</b>\n\n"
-    has_monitors = False
-
-    monitors = user_data.get("monitors", {})
-
-    if isinstance(monitors, dict):
-        monitor_lines = []
-
-        for monitor_id, data in monitors.items():
-            if not isinstance(data, dict):
-                continue
-
-            source = data.get("source", "unknown")
-            adapter = data.get("adapter", "unknown")
-            profile = data.get("profile", "Unknown")
-            url = data.get("url", monitor_id)
-            interval = data.get("interval", "?")
-            keywords = data.get("keywords", [])
-            seen_links = data.get("seen_links", [])
-
-            keywords_text = ", ".join(keywords)
-
-            monitor_lines.append(
-                f"– {profile}\n"
-                f"  Source: {source}\n"
-                f"  Adapter: {adapter}\n"
-                f"  URL: {url}\n"
-                f"  Every: {interval} min\n"
-                f"  Keywords: {keywords_text}\n"
-                f"  Seen links: {len(seen_links)}"
-            )
-
-        if monitor_lines:
-            has_monitors = True
-            message += "Active monitors:\n"
-            message += "\n\n".join(monitor_lines)
-
-    if not has_monitors:
-        message += "No active monitors."
-
-    return message
+    message = "<b>📋 Watchlist</b>\n\nActive monitors:\n"
+    lines = []
+    for url, data in monitors.items():
+        lines.append(
+            f"– {data['source']}\n"
+            f"  URL: {url}\n"
+            f"  Every: {data['interval']} min\n"
+            f"  Keywords: {', '.join(data['keywords'])}\n"
+            f"  Seen links: {len(data.get('seen_links', []))}"
+        )
+        message += "\n\n.join(lines)"
+        return message
