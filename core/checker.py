@@ -6,35 +6,7 @@ import feedparser
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-# =========================
-# Config
-# =========================
-
-STATE_FILE = "state.json"
-
-# =========================
-# State
-# =========================
-
-
-def read_state():
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
-
-
-def write_state(state):
-    with open(STATE_FILE, "w", encoding="utf-8") as file:
-        json.dump(state, file, indent=2, ensure_ascii=False)
-
-
-# =========================
-# Page loading
-# =========================
+from core.state import read_state, write_state
 
 
 def get_page_content(url):
@@ -49,11 +21,6 @@ def get_page_content(url):
 
     except requests.RequestException:
         return None
-
-
-# =========================
-# Keywords
-# =========================
 
 
 def set_keywords(chat_id, keywords):
@@ -117,11 +84,6 @@ def normalize_keywords(keywords):
                 clean_keywords.append(clean_keyword)
 
     return clean_keywords
-
-
-# =========================
-# Hacker News parsing
-# =========================
 
 
 def get_hn_topics(url):
@@ -198,11 +160,6 @@ def get_hn_matches(url, keywords):
     return matches
 
 
-# =========================
-# Hacker News monitoring
-# =========================
-
-
 def track_hn_page(chat_id, url, interval, keywords):
     matches = get_hn_matches(url, keywords)
 
@@ -247,11 +204,6 @@ def track_hn_page(chat_id, url, interval, keywords):
         f"Keywords: {', '.join(keywords)}\n"
         f"Current matching topics saved: {len(seen_links)}"
     )
-
-
-# =========================
-# RSS parsing
-# =========================
 
 
 def get_rss_items(url):
@@ -320,10 +272,6 @@ def track_bbc_all_monitor(chat_id, interval, keywords):
     )
 
 
-# =========================
-# Source configuration
-# =========================
-
 HACKER_NEWS_URL = "https://news.ycombinator.com/newest"
 
 BBC_ALL_FEEDS = [
@@ -347,10 +295,6 @@ BBC_ALL_FEEDS = [
         "url": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml",
     },
 ]
-
-# =========================
-# BBC matching
-# =========================
 
 
 def get_bbc_all_matches(keywords):
@@ -400,11 +344,6 @@ def get_bbc_all_matches(keywords):
         return None
 
     return matches
-
-
-# =========================
-# Manual source checks
-# =========================
 
 
 def check_hacker_news_source(keywords):
@@ -466,11 +405,6 @@ def check_bbc_all_source(keywords):
     return message
 
 
-# =========================
-# Source presets
-# =========================
-
-
 def check_source_preset(source_key, keywords):
     source_key = source_key.strip().lower()
 
@@ -490,11 +424,6 @@ def check_source_preset(source_key, keywords):
     )
 
 
-# =========================
-# Monitor creation
-# =========================
-
-
 def track_source_monitor(chat_id, source_key, interval, keywords):
     source_key = source_key.strip().lower()
 
@@ -505,11 +434,6 @@ def track_source_monitor(chat_id, source_key, interval, keywords):
         return track_bbc_all_monitor(chat_id, interval, keywords)
 
     return "Unknown source.\n\n" "Available sources:\n" "hn\n" "bbc"
-
-
-# =========================
-# Monitor removal
-# =========================
 
 
 def untrack_source_monitor(chat_id, source_key):
@@ -560,11 +484,6 @@ def untrack_source_monitor(chat_id, source_key):
         f"Source: {display_name}\n"
         f"Removed monitors: {len(monitor_ids_to_remove)}"
     )
-
-
-# =========================
-# Watchlist
-# =========================
 
 
 def show_watchlist(chat_id):
