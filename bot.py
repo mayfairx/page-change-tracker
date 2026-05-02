@@ -327,6 +327,47 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
 
+    async def show_main_menu():
+        await query.edit_message_text(
+            get_start_text(), reply_markup=get_main_menu(), parse_mode="HTML"
+        )
+
+    async def show_check_source():
+        await query.edit_message_text(
+            f"{bold('🔎 Check now')}\n\nChoose a source:",
+            reply_markup=get_check_source_menu(),
+            parse_mode="HTML",
+        )
+
+    async def show_track_source():
+        await query.edit_message_text(
+            f"{bold('📡 Start monitoring')}\n\nChoose a source:",
+            reply_markup=get_track_source_menu(),
+            parse_mode="HTML",
+        )
+
+    async def show_keywords_menu():
+        await query.edit_message_text(
+            f"{bold('🔑 Saved keywords')}\n\nChoose an action:",
+            reply_markup=get_saved_keywords_menu(),
+            parse_mode="HTML",
+        )
+
+    async def render_watchlist():
+        chat_id = str(update.effective_chat.id)
+        result = show_watchlist(chat_id)
+        await query.edit_message_text(
+            result, reply_markup=get_watchlist_menu(chat_id), parse_mode="HTML"
+        )
+
+    screens = {
+        "main_menu": show_main_menu,
+        "check_source": show_check_source,
+        "track_source": show_track_source,
+        "keywords_menu": show_keywords_menu,
+        "watchlist": render_watchlist,
+    }
+
     if data == "untrack_confirm_stop":
         source_key = context.user_data.get("pending_untrack_source")
         if not source_key:
@@ -362,25 +403,36 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if data == "menu_back":
         clear_pending_monitor(context)
+
+        nav = context.user_data.get("nav")
+        if nav:
+            nav.pop()
+            current = nav.current()
+
+            if current:
+                screen_name = current["screen"]
+                show_func = screens.get(screen_name)
+                if show_func:
+                    await show_func()
+                    return
+
         await query.edit_message_text(
             get_start_text(), reply_markup=get_main_menu(), parse_mode="HTML"
         )
         return
 
     if data == "menu_check":
-        await query.edit_message_text(
-            f"{bold('🔎 Check now')}\n\nChoose a source:",
-            reply_markup=get_check_source_menu(),
-            parse_mode="HTML",
-        )
+        nav = context.user_data.get("nav")
+        if nav:
+            nav.push("check_source")
+        await screens["check_source"]()
         return
 
     if data == "menu_track":
-        await query.edit_message_text(
-            f"{bold('📡 Start monitoring')}\n\nChoose a source:",
-            reply_markup=get_track_source_menu(),
-            parse_mode="HTML",
-        )
+        nav = context.user_data.get("nav")
+        if nav:
+            nav.push("track_source")
+        await screens["track_source"]()
         return
 
     if data == "track_source_hn":
@@ -406,13 +458,11 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "menu_watchlist":
-        chat_id = str(update.effective_chat.id)
-        result = show_watchlist(chat_id)
-
-        await query.edit_message_text(
-            result, reply_markup=get_watchlist_menu(chat_id), parse_mode="HTML"
-        )
-        return
+        nav = context.user_data.get("nav")
+        if nav:
+            nav.push("watchlist")
+            await screens["watchlist"]()
+            return
 
     if data == "untrack_source_hn":
         context.user_data["pending_untrack_source"] = "hn"
@@ -435,11 +485,10 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "menu_keywords":
-        await query.edit_message_text(
-            f"{bold('🔑 Saved keywords')}\n\nChoose an action:",
-            reply_markup=get_saved_keywords_menu(),
-            parse_mode="HTML",
-        )
+        nav = context.user_data.get("nav")
+        if nav:
+            nav.push("keywords_menu")
+        await screens["keywords_menu"]()
         return
 
     if data == "saved_keywords_show":
