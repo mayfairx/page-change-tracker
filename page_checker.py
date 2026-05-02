@@ -572,9 +572,8 @@ def show_watchlist(chat_id):
     user_data = state.get(chat_id, {})
 
     if not isinstance(user_data, dict) or not user_data:
-        return "Watchlist\n\n" "No active monitors."
-
-    message = "Watchlist\n\n"
+        return "<b>📋 Watchlist</b>\n\nNo active monitors."
+    message = "<b>📋 Watchlist</b>\n\n"
     has_monitors = False
 
     monitors = user_data.get("monitors", {})

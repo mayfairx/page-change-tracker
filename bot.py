@@ -8,8 +8,10 @@ from telegram.ext import (
     filters,
 )
 
+
 from dotenv import load_dotenv
 
+import html
 import os
 import time
 
@@ -42,8 +44,12 @@ DEFAULT_MONITOR_INTERVAL = 1
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    nav = MenuStack()
+    nav.push("main_menu")
+    context.user_data["nav"] = nav
+
     await update.effective_message.reply_text(
-        "Page Change Tracker\n\n" "Choose an action:", reply_markup=get_main_menu()
+        get_start_text(), reply_markup=get_main_menu(), parse_mode="HTML"
     )
 
 
@@ -102,6 +108,15 @@ def get_confirm_clear_keywords_menu():
     return InlineKeyboardMarkup(keyboard)
 
 
+def get_start_text():
+    return (
+        f"{bold('Page Change Tracker')}\n\n"
+        "Monitor public sources for signals you care about.\n\n"
+        "Set keywords, track Hacker News and BBC News, and get alerts when new matching items appear.\n\n"
+        "Choose an action:"
+    )
+
+
 def get_confirm_monitor_menu():
     keyboard = [
         [
@@ -117,6 +132,10 @@ def get_monitor_confirmation_text(context):
     source = context.user_data.get("pending_source", "unknown")
     keywords = context.user_data.get("pending_keywords", [])
     interval = context.user_data.get("pending_interval", "?")
+
+    source_name = SOURCE_NAMES.get(source, source)
+    escaped_keywords = [html.escape(kw) for kw in keywords]
+    keywords_text = ", ".join(escaped_keywords)
 
     if source == "hn":
         source_name = "Hacker News"
@@ -136,15 +155,44 @@ def get_monitor_confirmation_text(context):
     )
 
 
+def bold(text):
+    return f"<b>{text}</b>"
+
+
+SOURCE_NAMES = {
+    "hn": "Hacker News",
+    "bbc": "BBC News",
+}
+
+
+class MenuStack:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, screen_name, **kwargs):
+        self.stack.append({"screen": screen_name, "data": kwargs})
+
+    def pop(self):
+        if len(self.stack) > 1:
+            self.stack.pop()
+        return self.stack[-1] if self.stack else None
+
+    def current(self):
+        return self.stack[-1] if self.stack else None
+
+    def clear(self):
+        self.stack = []
+
+
 def get_main_menu():
     keyboard = [
         [
-            InlineKeyboardButton("Check now", callback_data="menu_check"),
-            InlineKeyboardButton("Start monitoring", callback_data="menu_track"),
+            InlineKeyboardButton("🔎 Check now", callback_data="menu_check"),
+            InlineKeyboardButton("📡 Start monitoring", callback_data="menu_track"),
         ],
         [
-            InlineKeyboardButton("Watchlist", callback_data="menu_watchlist"),
-            InlineKeyboardButton("Saved keywords", callback_data="menu_keywords"),
+            InlineKeyboardButton("📋 Watchlist", callback_data="menu_watchlist"),
+            InlineKeyboardButton("🔑 Saved keywords", callback_data="menu_keywords"),
         ],
     ]
 
@@ -218,7 +266,7 @@ def get_untrack_confirmation_text(context):
     else:
         source_name = source
 
-    return "Confirm stop\n\n" f"Source: {source_name}\n\n" "Stop this monitor?"
+    return f"{bold('⛔ Confirm stop')}\n\n{bold('Source:')} {bold(source_name)}\n\n{bold('Stop this monitor?')}"
 
 
 def get_check_source_menu():
@@ -279,20 +327,13 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = query.data
 
-    if data == "menu_back":
-        clear_pending_monitor(context)
-
-        await query.edit_message_text(
-            "Page Change Tracker\n\n" "Choose an action:", reply_markup=get_main_menu()
-        )
-        return
-
     if data == "untrack_confirm_stop":
         source_key = context.user_data.get("pending_untrack_source")
         if not source_key:
             await query.edit_message_text(
                 "No source selected.\n\n" "Go back and try again.",
                 reply_markup=get_back_menu(),
+                parse_mode="HTML",
             )
             return
 
@@ -314,19 +355,31 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = str(update.effective_chat.id)
         result = show_watchlist(chat_id)
 
-        await query.edit_message_text(result, reply_markup=get_watchlist_menu(chat_id))
+        await query.edit_message_text(
+            result, reply_markup=get_watchlist_menu(chat_id), parse_mode="HTML"
+        )
+        return
+
+    if data == "menu_back":
+        clear_pending_monitor(context)
+        await query.edit_message_text(
+            get_start_text(), reply_markup=get_main_menu(), parse_mode="HTML"
+        )
         return
 
     if data == "menu_check":
         await query.edit_message_text(
-            "Check now\n\n" "Choose a source:", reply_markup=get_check_source_menu()
+            f"{bold('🔎 Check now')}\n\nChoose a source:",
+            reply_markup=get_check_source_menu(),
+            parse_mode="HTML",
         )
         return
 
     if data == "menu_track":
         await query.edit_message_text(
-            "Start monitoring\n\n" "Choose a source:",
+            f"{bold('📡 Start monitoring')}\n\nChoose a source:",
             reply_markup=get_track_source_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -335,8 +388,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pending_source"] = "hn"
 
         await query.edit_message_text(
-            "Hacker News monitoring\n\n" "Choose how to set keywords:",
+            f"{bold('📡 Hacker News monitoring')}\n\nChoose how to set keywords:",
             reply_markup=get_keyword_choice_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -345,8 +399,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pending_source"] = "bbc"
 
         await query.edit_message_text(
-            "BBC News monitoring\n\n" "Choose how to set keywords:",
+            f"{bold('📡 BBC News monitoring')}\n\nChoose how to set keywords:",
             reply_markup=get_keyword_choice_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -354,7 +409,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id = str(update.effective_chat.id)
         result = show_watchlist(chat_id)
 
-        await query.edit_message_text(result, reply_markup=get_watchlist_menu(chat_id))
+        await query.edit_message_text(
+            result, reply_markup=get_watchlist_menu(chat_id), parse_mode="HTML"
+        )
         return
 
     if data == "untrack_source_hn":
@@ -363,6 +420,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             get_untrack_confirmation_text(context),
             reply_markup=get_confirm_untrack_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -372,13 +430,15 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             get_untrack_confirmation_text(context),
             reply_markup=get_confirm_untrack_menu(),
+            parse_mode="HTML",
         )
         return
 
     if data == "menu_keywords":
         await query.edit_message_text(
-            "Saved keywords\n\n" "Choose an action:",
+            f"{bold('🔑 Saved keywords')}\n\nChoose an action:",
             reply_markup=get_saved_keywords_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -399,6 +459,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "Send keywords to save.\n\n" "Example:\n" "ai python api prompt",
             reply_markup=get_back_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -406,6 +467,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "Clear saved keywords?\n\n" "This will remove your saved keyword list.",
             reply_markup=get_confirm_clear_keywords_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -427,6 +489,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "Saved keywords\n\n" "Choose an action:",
             reply_markup=get_saved_keywords_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -435,8 +498,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pending_source"] = "bbc"
 
         await query.edit_message_text(
-            "BBC News check\n\n" "Choose how to set keywords:",
+            f"{bold('🔎 BBC News check')}\n\nChoose how to set keywords:",
             reply_markup=get_keyword_choice_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -445,8 +509,9 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["pending_source"] = "hn"
 
         await query.edit_message_text(
-            "Hacker News check\n\n" "Choose how to set keywords:",
+            f"{bold('🔎 Hacker News check')}\n\nChoose how to set keywords:",
             reply_markup=get_keyword_choice_menu(),
+            parse_mode="HTML",
         )
         return
 
@@ -457,6 +522,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(
                 "No source selected.\n\n" "Go back and choose a source first.",
                 reply_markup=get_back_menu(),
+                parse_mode="HTML",
             )
             return
 
@@ -485,10 +551,15 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             or "keywords" not in state[chat_id]
             or not state[chat_id]["keywords"]
         ):
+            context.user_data["pending_step"] = "keywords"
+
             await query.edit_message_text(
-                "No saved keywords found.\n\n"
-                "Use /set_keywords first or choose Enter keywords.",
+                f"{bold('No saved keywords yet')}\n\n"
+                f"Send your keywords now — they will be saved automatically.\n\n"
+                f"Example:\n"
+                f"ai python bot",
                 reply_markup=get_back_menu(),
+                parse_mode="HTML",
             )
             return
 
@@ -519,6 +590,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(
                 "Monitor setup is incomplete.\n\n" "Go back and start again.",
                 reply_markup=get_back_menu(),
+                parse_mode="HTML",
             )
             return
 
@@ -541,6 +613,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(
                 "Monitor setup is incomplete.\n\n" "Go back and start again.",
                 reply_markup=get_back_menu(),
+                parse_mode="HTML",
             )
             return
 
@@ -557,10 +630,16 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pending_keywords = context.user_data.get("pending_keywords")
         pending_interval = context.user_data.get("pending_interval")
 
+        print(
+            f"DEBUG confirm: source={pending_source}, keywords={pending_keywords}, interval={pending_interval}"
+        )
+        print(f"DEBUG full user_data: {context.user_data}")
+
         if not pending_source or not pending_keywords or not pending_interval:
             await query.edit_message_text(
-                "Monitor setup is incomplete.\n\n" "Go back and start again.",
+                "Monitor setup is incomplete.\n\nGo back and start again.",
                 reply_markup=get_back_menu(),
+                parse_mode="HTML",
             )
             return
 
@@ -579,7 +658,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clear_pending_monitor(context)
 
         await query.edit_message_text(
-            "Monitor setup cancelled.", reply_markup=get_back_menu()
+            "Monitor setup cancelled.", reply_markup=get_back_menu(), parse_mode="HTML"
         )
         return
 
@@ -631,6 +710,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not keywords:
             await update.effective_message.reply_text("No valid keywords provided.")
             return
+
+        set_keywords(chat_id, keywords)
 
         if pending_action == "check":
             result = check_source_preset(pending_source, keywords)
@@ -916,7 +997,7 @@ async def watchlist(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     result = show_watchlist(chat_id)
 
-    await update.effective_message.reply_text(result)
+    await update.effective_message.reply_text(result, parse_mode="HTML")
 
 
 # =========================
