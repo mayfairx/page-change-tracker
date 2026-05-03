@@ -9,6 +9,7 @@ def get_connection():
 
 def init_db():
     conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS monitors (
             chat_id TEXT,
@@ -21,7 +22,6 @@ def init_db():
         )
     """)
 
-    cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS keywords (
             chat_id TEXT,
@@ -62,15 +62,17 @@ def save_monitor(chat_id, monitor_data):
     )
     cursor.execute(
         """
-                   INSERT INTRO monitors (chat_id, source, url, interval, keywords, last_check, seen_links)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
-    """,
+        INSERT INTO monitors (chat_id, source, url, interval, keywords, last_check, seen_links)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        """,
         (
             chat_id,
             monitor_data["source"],
             monitor_data["url"],
             monitor_data["interval"],
-            ", ".join(monitor_data.get("seen_links", [])),
+            ",".join(monitor_data["keywords"]),
+            monitor_data["last_check"],
+            ",".join(monitor_data.get("seen_links", [])),
         ),
     )
     conn.commit()
@@ -125,8 +127,8 @@ def update_monitor_seen(chat_id, url, last_check, seen_links):
         """
         UPDATE monitors SET last_check = ?, seen_links = ?
         WHERE chat_id = ? AND url = ?
-    """,
-        ("last_check", ",".join(seen_links), chat_id, url),
+        """,
+        (last_check, ",".join(seen_links), chat_id, url),
     )
     conn.commit()
     conn.close()

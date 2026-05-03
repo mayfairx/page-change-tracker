@@ -6,8 +6,6 @@ import feedparser
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-from core.state import read_state, write_state
-
 
 def get_page_content(url):
     try:
@@ -379,6 +377,7 @@ def track_source_monitor(chat_id, source_key, interval, keywords):
 
 def untrack_source_monitor(chat_id, source_key):
     from core.db import load_monitors, delete_monitor
+
     source_key = source_key.strip().lower()
     if source_key in ["hn", "hacker_news"]:
         source_name = "hacker_news"
@@ -388,23 +387,26 @@ def untrack_source_monitor(chat_id, source_key):
         display_name = "BBC News"
     else:
         return "Unknown source.\n\nAvailable sources:\nhn\nbbc"
+
     monitors = load_monitors(chat_id)
     removed = 0
     for url, data in list(monitors.items()):
-        if data ["source"] == source_name:
+        if data["source"] == source_name:
             delete_monitor(chat_id, url)
             removed += 1
-        if removed == 0, 
-            return f"No active {display_name} monitor found."
-        return (
-            "Monitor disabled.\n\n"
-            f"Source: {display_name}\n"
-            f"Removed monitors: {removed}"
-            )
+
+    if removed == 0:
+        return f"No active {display_name} monitor found."
+    return (
+        "Monitor disabled.\n\n"
+        f"Source: {display_name}\n"
+        f"Removed monitors: {removed}"
+    )
 
 
 def show_watchlist(chat_id):
     from core.db import load_monitors
+
     monitors = load_monitors(chat_id)
     if not monitors:
         return "<b>📋 Watchlist</b>\n\nNo active monitors."
@@ -418,5 +420,5 @@ def show_watchlist(chat_id):
             f"  Keywords: {', '.join(data['keywords'])}\n"
             f"  Seen links: {len(data.get('seen_links', []))}"
         )
-        message += "\n\n.join(lines)"
-        return message
+    message += "\n\n".join(lines)
+    return message

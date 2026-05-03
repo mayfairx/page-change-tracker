@@ -1,6 +1,5 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import html
-from core.state import read_state
 
 
 def get_interval_menu():
@@ -145,23 +144,18 @@ def get_back_menu():
 
 
 def get_watchlist_menu(chat_id):
-    state = read_state()
-    user_data = state.get(chat_id, {})
-    monitors = user_data.get("monitors", {}) if isinstance(user_data, dict) else {}
+    from core.db import load_monitors
+
+    monitors = load_monitors(chat_id)
 
     has_hn = False
     has_bbc = False
 
-    if isinstance(monitors, dict):
-        for data in monitors.values():
-            if not isinstance(data, dict):
-                continue
-
-            if data.get("source") == "hacker_news":
-                has_hn = True
-
-            if data.get("source") == "bbc_all":
-                has_bbc = True
+    for data in monitors.values():
+        if data.get("source") == "hacker_news":
+            has_hn = True
+        if data.get("source") == "bbc_all":
+            has_bbc = True
 
     keyboard = []
     stop_buttons = []
@@ -170,7 +164,6 @@ def get_watchlist_menu(chat_id):
         stop_buttons.append(
             InlineKeyboardButton("Stop Hacker News", callback_data="untrack_source_hn")
         )
-
     if has_bbc:
         stop_buttons.append(
             InlineKeyboardButton("Stop BBC News", callback_data="untrack_source_bbc")
@@ -178,7 +171,6 @@ def get_watchlist_menu(chat_id):
 
     if stop_buttons:
         keyboard.append(stop_buttons)
-
     keyboard.append([InlineKeyboardButton("Back", callback_data="menu_back")])
 
     return InlineKeyboardMarkup(keyboard)
