@@ -7,21 +7,21 @@ A Telegram bot that monitors Hacker News and BBC News for keywords you care abou
 
 ## Project structure
 
-```
+```text
 page-change-tracker/
-├── bot/                    # Telegram layer
+├── bot/
 │   ├── __init__.py
-│   ├── main.py             # Entry point, Application setup
-│   ├── handlers.py         # All async handlers and commands
-│   └── ui.py               # Keyboards, texts, MenuStack, helpers
-├── core/                   # Business logic
+│   ├── main.py
+│   ├── handlers.py
+│   └── ui.py
+├── core/
 │   ├── __init__.py
-│   ├── checker.py          # Page loading, parsing, matching, monitors
-│   ├── db.py               # SQLite database operations
-│   ├── ai.py               # AI summarization via OpenRouter
-│   └── state.py            # Legacy JSON state (deprecated)
-├── data/                   # Persistent storage
-│   └── bot.db              # SQLite database
+│   ├── checker.py
+│   ├── db.py
+│   ├── ai.py
+│   └── state.py
+├── data/
+│   └── bot.db
 ├── .env
 ├── .gitignore
 ├── requirements.txt
@@ -56,10 +56,10 @@ python run.py
 |---|---|
 | `/start` | Open the main inline menu |
 | `/help` | Show available commands and examples |
-| `/check_source <source> <keywords>` | Check a source immediately (e.g. `/check_source hn ai python`) |
+| `/check_source <source> <keywords>` | Check a source immediately |
 | `/set_keywords <keywords>` | Save keywords for later use |
 | `/show_keywords` | Display your saved keywords |
-| `/track <source> [keywords]` | Start background monitoring. Uses saved keywords if none provided. |
+| `/track <source> [keywords]` | Start background monitoring |
 | `/untrack <source>` | Stop monitoring a source |
 | `/watchlist` | Show all active monitors |
 
@@ -96,12 +96,12 @@ The bot uses OpenRouter API with Google Gemini 2.0 Flash to generate one-sentenc
 ## Requirements
 
 - Python 3.10+
-- `python-telegram-bot` — Telegram Bot API framework
-- `python-dotenv` — Environment variable loading
-- `requests` — HTTP requests
-- `beautifulsoup4` — HTML parsing
-- `feedparser` — RSS feed parsing
-- `openai` — OpenRouter API client (OpenAI-compatible)
+- `python-telegram-bot`
+- `python-dotenv`
+- `requests`
+- `beautifulsoup4`
+- `feedparser`
+- `openai`
 
 ## Tech stack
 
