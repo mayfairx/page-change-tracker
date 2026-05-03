@@ -358,6 +358,7 @@ async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_confirm_monitor_menu(),
             parse_mode="HTML",
         )
+        return
 
     if data == "interval_custom":
         if not context.user_data.get("pending_source") or not context.user_data.get(
@@ -555,6 +556,7 @@ async def watchlist_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
     from core.db import load_monitors, update_monitor_seen, get_connection
     from core.checker import get_hn_matches, get_bbc_all_matches
+    from core.ai import summarize
 
     current_time = time.time()
     conn = get_connection()
@@ -584,9 +586,10 @@ async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
                     if item["link"] in seen_links:
                         continue
                     keywords_text = ", ".join(item["keywords"])
+                    summary = summarize(item["title"])
                     await context.bot.send_message(
                         chat_id=int(chat_id),
-                        text=f"New monitor item:\n\nSource: Hacker News\n\n{item['title']}\nTime: {item['age']}\nKeywords: {keywords_text}\n{item['link']}",
+                        text=f"New monitor item:\n\nSource: Hacker News\n\n{item['title']}\nSummary: {summary}\nTime: {item['age']}\nKeywords: {keywords_text}\n{item['link']}",
                     )
                     seen_links.append(item["link"])
                 update_monitor_seen(chat_id, url, current_time, seen_links)
@@ -600,9 +603,13 @@ async def check_monitors(context: ContextTypes.DEFAULT_TYPE):
                     if item["link"] in seen_links:
                         continue
                     keywords_text = ", ".join(item["keywords"])
+                    full_text = (
+                        f"Title: {item['title']}. Content: {item.get('summary', '')}"
+                    )
+                    summary = summarize(full_text)
                     await context.bot.send_message(
                         chat_id=int(chat_id),
-                        text=f"New monitor item:\n\nSource: BBC News\n\n{item['title']}\nFeed: {item['source']}\nPublished: {item['published']}\nKeywords: {keywords_text}\n{item['link']}",
+                        text=f"New monitor item:\n\nSource: BBC News\n\n{item['title']}\nSummary: {summary}\nFeed: {item['source']}\nPublished: {item['published']}\nKeywords: {keywords_text}\n{item['link']}",
                     )
                     seen_links.append(item["link"])
                 update_monitor_seen(chat_id, url, current_time, seen_links)

@@ -315,6 +315,8 @@ def check_hacker_news_source(keywords):
 
 
 def check_bbc_all_source(keywords):
+    from core.ai import summarize
+
     matches = get_bbc_all_matches(keywords)
 
     if matches is None:
@@ -333,8 +335,12 @@ def check_bbc_all_source(keywords):
     for item in matches[:10]:
         keywords_text = ", ".join(item["keywords"])
 
+        full_text = f"Title: {item['title']}. Content: {item.get('summary', '')}"
+        summary = summarize(full_text)
+
         message += (
             f"{item['title']}\n"
+            f"Summary: {summary}\n"
             f"Feed: {item['source']}\n"
             f"Published: {item['published']}\n"
             f"Keywords: {keywords_text}\n"
