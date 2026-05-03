@@ -3,7 +3,18 @@
 
 A Telegram bot that monitors Hacker News and BBC News for keywords you care about. Check sources manually, save reusable keywords, run background monitors with configurable intervals, get alerts when new matches appear, and receive AI-powered summaries of news — all through an inline button interface.
 
-**Features:** Manual source check for Hacker News and BBC News. Background monitoring at 1/5/15 minute intervals or custom. Saved keywords reusable across checks and monitors. Watchlist with dynamic stop buttons for active monitors. Confirmation flows before creating monitors, stopping monitors, and clearing keywords. Smart navigation via MenuStack — Back always returns to the previous screen. Keyword auto-save when none are saved yet. Formatted UI with bold headers, emoji icons, and clean message structure. AI-powered news summarization via OpenRouter (Gemini 2.0 Flash). SQLite database for persistent storage.
+# Features
+
+- Manual source check for Hacker News and BBC News
+- Background monitoring at 1/5/15 minute intervals or custom
+- Saved keywords reusable across checks and monitors
+- Watchlist with dynamic stop buttons for active monitors
+- Confirmation flows before creating monitors, stopping monitors, and clearing keywords
+- Smart navigation via MenuStack — Back always returns to the previous screen
+- Keyword auto-save when none are saved yet
+- Formatted UI with bold headers, emoji icons, and clean message structure
+- AI-powered news summarization via OpenRouter (Gemini 2.0 Flash)
+- SQLite database for persistent storage
 
 ## Project structure
 
