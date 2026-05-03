@@ -1,19 +1,25 @@
 ```markdown
-## Page Change Tracker
+# Page Change Tracker
 
-A Telegram bot that monitors Hacker News and BBC News for keywords you care about. Check sources manually, save reusable keywords, run background monitors with configurable intervals, get alerts when new matches appear, and receive AI-powered summaries of news — all through an inline button interface.
+Telegram keyword monitoring bot for Hacker News and BBC RSS feeds with AI-powered news summarization.
 
-# Features
+The bot can check preset sources by keywords, save reusable keywords, monitor Hacker News and BBC News in the background, show active monitors, stop monitors, and summarize news using AI — all through Telegram inline buttons.
 
-- Manual source check for Hacker News and BBC News
-- Background monitoring at 1/5/15 minute intervals or custom
-- Saved keywords reusable across checks and monitors
-- Watchlist with dynamic stop buttons for active monitors
-- Confirmation flows before creating monitors, stopping monitors, and clearing keywords
-- Smart navigation via MenuStack — Back always returns to the previous screen
-- Keyword auto-save when none are saved yet
-- Formatted UI with bold headers, emoji icons, and clean message structure
+## What it does
+
+- Checks preset sources by keywords
+- Supports Hacker News and BBC RSS feeds
+- Tracks Hacker News in the background
+- Tracks BBC News RSS feeds in the background
+- Sends Telegram alerts for new matching monitor items
 - AI-powered news summarization via OpenRouter (Gemini 2.0 Flash)
+- Saves reusable keyword lists
+- Shows active monitors with `/watchlist`
+- Stops active monitors with `/untrack`
+- Button-based source checks, monitor setup, monitor stopping, and keyword management
+- Interval selection: 1 min, 5 min, 15 min, or custom
+- Confirmation steps before creating monitors, stopping monitors, and clearing keywords
+- Automatic keyword cleanup and normalization
 - SQLite database for persistent storage
 
 ## Project structure
@@ -29,8 +35,7 @@ page-change-tracker/
 │   ├── __init__.py
 │   ├── checker.py
 │   ├── db.py
-│   ├── ai.py
-│   └── state.py
+│   └── ai.py
 ├── data/
 │   └── bot.db
 ├── .env
@@ -48,7 +53,7 @@ cd page-change-tracker
 pip install -r requirements.txt
 ```
 
-Create a `.env` file:
+Create `.env`:
 
 ```env
 BOT_TOKEN=your_telegram_bot_token
@@ -76,22 +81,22 @@ python run.py
 
 ## Button UI
 
-Launch the bot with `/start` to open the main menu:
+Main menu:
 
 ```
 [🔎 Check now]  [📡 Start monitoring]
 [📋 Watchlist]  [🔑 Saved keywords]
 ```
 
-**Check now flow:** Check now → Hacker News or BBC News → Enter keywords or Use saved keywords → Results appear immediately with AI summaries.
+**Check now flow:** Check now → Hacker News or BBC News → Enter keywords or Use saved keywords → Results with AI summaries.
 
-**Start monitoring flow:** Start monitoring → Hacker News or BBC News → Enter keywords or Use saved keywords → Choose interval (1 min / 5 min / 15 min / Custom) → Confirm screen shows source, keywords, and interval → Press Start to create the monitor.
+**Start monitoring flow:** Start monitoring → Hacker News or BBC News → Enter keywords or Use saved keywords → Choose interval (1/5/15/Custom min) → Confirm → Start.
 
-**Watchlist flow:** Watchlist shows all active monitors with their details. Dynamic stop buttons appear for each active source. Pressing one shows a confirmation screen. After confirming, the monitor is removed and the updated watchlist is shown.
+**Watchlist flow:** Watchlist → Stop Hacker News / Stop BBC News → Confirm → Monitor removed.
 
-**Saved keywords flow:** Saved keywords → Show keywords displays your list. Set / Replace asks you to send new keywords. Clear keywords shows a confirmation before deleting.
+**Saved keywords flow:** Saved keywords → Show / Set / Clear.
 
-**Keyword auto-save:** If you choose "Use saved keywords" but none are saved, the bot asks you to enter keywords now and saves them automatically.
+If you choose "Use saved keywords" but none are saved, the bot asks you to enter them now and saves automatically.
 
 ## Supported sources
 
@@ -102,7 +107,14 @@ Launch the bot with `/start` to open the main menu:
 
 ## AI Summarization
 
-The bot uses OpenRouter API with Google Gemini 2.0 Flash to generate one-sentence summaries of news articles. For BBC News, the AI receives both the title and the article summary for better accuracy. For Hacker News, it summarizes based on the title. Summaries are included in both manual checks and background monitor alerts.
+The bot uses OpenRouter API with Google Gemini 2.0 Flash to generate one-sentence summaries. For BBC News, the AI receives both the title and the article text for better accuracy. For Hacker News, it summarizes based on the title.
+
+**Example — raw title vs AI summary:**
+
+```text
+Why Spotify has no button to filter out AI music
+Summary: Spotify doesn't offer a button to filter AI music because they haven't addressed the issue yet.
+```
 
 ## Requirements
 
@@ -116,10 +128,10 @@ The bot uses OpenRouter API with Google Gemini 2.0 Flash to generate one-sentenc
 
 ## Tech stack
 
-- **Database:** SQLite via `sqlite3`
+- **Database:** SQLite
 - **AI:** OpenRouter → Google Gemini 2.0 Flash
 - **Navigation:** Custom MenuStack (stack-based screen history)
-- **Architecture:** Modular — `bot/` for Telegram layer, `core/` for business logic, `data/` for storage
+- **Architecture:** `bot/` for Telegram layer, `core/` for business logic, `data/` for storage
 
 ## License
 
