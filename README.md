@@ -1,4 +1,3 @@
-```markdown
 # Page Change Tracker
 
 Telegram keyword monitoring bot for Hacker News and BBC RSS feeds with AI-powered news summarization.
