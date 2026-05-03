@@ -1,5 +1,5 @@
 ```markdown
-# Page Change Tracker
+## Page Change Tracker
 
 A Telegram bot that monitors Hacker News and BBC News for keywords you care about. Check sources manually, save reusable keywords, run background monitors with configurable intervals, get alerts when new matches appear, and receive AI-powered summaries of news — all through an inline button interface.
 
